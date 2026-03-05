@@ -113,7 +113,8 @@ public class AuthController : ControllerBase
 
     private async Task<string> GenerateJwtToken(ApplicationUser user)
     {
-        var jwtKey = _configuration["Jwt:Key"] ?? "PatientCrmDefaultSecretKeyForJwtToken2024!";
+        var jwtKey = _configuration["Jwt:Key"]
+            ?? throw new InvalidOperationException("Jwt:Key configuration is required.");
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 

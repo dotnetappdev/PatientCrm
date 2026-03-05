@@ -22,7 +22,8 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantContext, TenantContext>();
 
 // JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "PatientCrmDefaultSecretKeyForJwtToken2024!";
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException("Jwt:Key configuration is required. Set it via appsettings or environment variable.");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
