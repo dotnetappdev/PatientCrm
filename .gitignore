@@ -1,0 +1,60 @@
+## .NET Core
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+
+## Visual Studio
+.vs/
+*.rsuser
+*.pidb
+*.vssp
+*.sln.docstates
+
+## JetBrains Rider
+.idea/
+*.sln.iml
+
+## macOS
+.DS_Store
+
+## User-specific files
+*.rsuser
+*.user
+
+## NuGet
+*.nupkg
+*.nuspec
+.nuget/
+packages/
+!packages/build/
+
+## ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+## User secrets
+secrets.json
+appsettings.Development.json
+
+## Publish
+PublishProfiles/
+
+## Uploads (user-uploaded files should not be committed)
+src/PatientCrm.Web/wwwroot/uploads/
+src/PatientCrm.Api/wwwroot/uploads/
+
+## Logs
+logs/
+*.log

@@ -1,0 +1,59 @@
+@{
+    ViewData["Title"] = "Administration";
+    var tenants = ViewBag.Tenants as List<PatientCrm.Core.Entities.Tenant> ?? new();
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Administration</h1>
+        <p class="page-subtitle">System administration and tenant management</p>
+    </div>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-icon blue">🏥</div>
+        <div><div class="stat-value">@ViewBag.TenantCount</div><div class="stat-label">Active Tenants</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">👤</div>
+        <div><div class="stat-value">@ViewBag.UserCount</div><div class="stat-label">Active Users</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple">🏥</div>
+        <div><div class="stat-value">@ViewBag.PatientCount</div><div class="stat-label">Total Patients</div></div>
+    </div>
+</div>
+
+<div class="table-container">
+    <div class="table-header">
+        <h3 class="card-title">Tenants</h3>
+        <div class="d-flex gap-2">
+            <a href="/Admin/Users" class="btn btn-secondary btn-sm">Manage Users</a>
+        </div>
+    </div>
+    <table>
+        <thead>
+            <tr><th>Organisation</th><th>Type</th><th>ODS Code</th><th>Location</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var tenant in tenants)
+            {
+                <tr>
+                    <td>
+                        <div class="fw-600">@tenant.Name</div>
+                        <div class="patient-meta">@tenant.Email</div>
+                    </td>
+                    <td>
+                        <span class="badge @(tenant.TenantType == PatientCrm.Core.Enums.TenantType.Hscni ? "badge-purple" : tenant.TenantType == PatientCrm.Core.Enums.TenantType.PrivatePractice ? "badge-amber" : "badge-blue")">
+                            @tenant.TenantType
+                        </span>
+                    </td>
+                    <td>@(tenant.OdsCode ?? "—")</td>
+                    <td>@tenant.City, @tenant.Postcode</td>
+                    <td><span class="badge @(tenant.IsActive ? "badge-green" : "badge-gray")">@(tenant.IsActive ? "Active" : "Inactive")</span></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

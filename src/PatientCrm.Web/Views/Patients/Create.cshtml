@@ -1,0 +1,220 @@
+@model PatientCrm.Core.Entities.Patient
+@{
+    ViewData["Title"] = "Register New Patient";
+}
+
+<div class="page-header">
+    <div>
+        <a href="/Patients" style="color: var(--text-muted); text-decoration: none; font-size: 0.875rem;">← Back to Patients</a>
+        <h1 class="page-title" style="margin-top: 0.25rem;">Register New Patient</h1>
+        <p class="page-subtitle">NHS &amp; HSCNI compliant patient registration</p>
+    </div>
+</div>
+
+<form method="post" asp-action="Create">
+    @Html.AntiForgeryToken()
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.25rem;">
+
+        <!-- NHS Identifiers -->
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">NHS / HSCNI Identifiers</h3></div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">NHS Number</label>
+                    <input asp-for="NhsNumber" class="form-control" placeholder="943 476 5925" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">HSCNI Number</label>
+                    <input asp-for="HscniNumber" class="form-control" placeholder="HC123456789" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">CHI Number (Scotland)</label>
+                <input asp-for="ChiNumber" class="form-control" placeholder="0101190137" />
+            </div>
+        </div>
+
+        <!-- Personal Details -->
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Personal Details</h3></div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">First Name *</label>
+                    <input asp-for="FirstName" class="form-control" required />
+                    <span asp-validation-for="FirstName" style="color: var(--danger); font-size: 0.75rem;"></span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Last Name *</label>
+                    <input asp-for="LastName" class="form-control" required />
+                    <span asp-validation-for="LastName" style="color: var(--danger); font-size: 0.75rem;"></span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Middle Name</label>
+                <input asp-for="MiddleName" class="form-control" />
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Date of Birth *</label>
+                    <input asp-for="DateOfBirth" type="date" class="form-control" required />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Gender</label>
+                    <select asp-for="Gender" class="form-control">
+                        @foreach (var g in (PatientCrm.Core.Enums.Gender[])ViewBag.Genders)
+                        {
+                            <option value="@g">@g</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Blood Group</label>
+                    <select asp-for="BloodGroup" class="form-control">
+                        @foreach (var bg in (PatientCrm.Core.Enums.BloodGroup[])ViewBag.BloodGroups)
+                        {
+                            <option value="@bg">@bg</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">NHS Region</label>
+                    <select asp-for="Region" class="form-control">
+                        @foreach (var r in (PatientCrm.Core.Enums.NhsRegion[])ViewBag.Regions)
+                        {
+                            <option value="@r">@r</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Ethnicity</label>
+                <input asp-for="Ethnicity" class="form-control" placeholder="e.g. White British" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Preferred Language</label>
+                <input asp-for="PreferredLanguage" class="form-control" placeholder="English" />
+            </div>
+        </div>
+
+        <!-- Contact -->
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Contact Information</h3></div>
+            <div class="form-group">
+                <label class="form-label">Phone Number</label>
+                <input asp-for="PhoneNumber" class="form-control" placeholder="01234 567890" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Mobile Number</label>
+                <input asp-for="MobileNumber" class="form-control" placeholder="07700 900000" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email Address</label>
+                <input asp-for="Email" type="email" class="form-control" placeholder="patient@email.co.uk" />
+            </div>
+        </div>
+
+        <!-- Address -->
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Address</h3></div>
+            <div class="form-group">
+                <label class="form-label">Address Line 1</label>
+                <input asp-for="AddressLine1" class="form-control" placeholder="12 Oak Avenue" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Address Line 2</label>
+                <input asp-for="AddressLine2" class="form-control" />
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">City / Town</label>
+                    <input asp-for="City" class="form-control" placeholder="Manchester" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Postcode</label>
+                    <input asp-for="Postcode" class="form-control" placeholder="M1 1AA" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Emergency Contact -->
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Emergency Contact</h3></div>
+            <div class="form-group">
+                <label class="form-label">Name</label>
+                <input asp-for="EmergencyContactName" class="form-control" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Relationship</label>
+                <input asp-for="EmergencyContactRelationship" class="form-control" placeholder="Spouse / Parent / Sibling" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Phone Number</label>
+                <input asp-for="EmergencyContactPhone" class="form-control" />
+            </div>
+        </div>
+
+        <!-- Clinical -->
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Clinical Information</h3></div>
+            <div class="form-group">
+                <label class="form-label">Known Allergies</label>
+                <textarea asp-for="Allergies" class="form-control" rows="2" placeholder="Penicillin, Latex..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Current Medications</label>
+                <textarea asp-for="CurrentMedications" class="form-control" rows="2" placeholder="List current medications..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Medical Alerts</label>
+                <textarea asp-for="MedicalAlerts" class="form-control" rows="2" placeholder="Important clinical alerts..."></textarea>
+            </div>
+        </div>
+
+        <!-- Registered GP -->
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Registered GP</h3></div>
+            <div class="form-group">
+                <label class="form-label">GP Name</label>
+                <input asp-for="RegisteredGpName" class="form-control" placeholder="Dr. John Smith" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Practice Name</label>
+                <input asp-for="RegisteredGpPractice" class="form-control" placeholder="Greenfield Medical Practice" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">ODS Code</label>
+                <input asp-for="RegisteredGpOdsCode" class="form-control" placeholder="A81001" />
+            </div>
+        </div>
+
+        <!-- Consent -->
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Patient Consent</h3></div>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <label class="form-check">
+                    <input asp-for="ConsentToTreatment" type="checkbox" />
+                    <span style="font-size: 0.875rem;">Consent to treatment</span>
+                </label>
+                <label class="form-check">
+                    <input asp-for="ConsentToDataSharing" type="checkbox" />
+                    <span style="font-size: 0.875rem;">Consent to data sharing within the NHS</span>
+                </label>
+                <label class="form-check">
+                    <input asp-for="RequiresInterpreter" type="checkbox" />
+                    <span style="font-size: 0.875rem;">Requires an interpreter</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2" style="margin-top: 1.5rem; justify-content: flex-end;">
+        <a href="/Patients" class="btn btn-secondary btn-lg">Cancel</a>
+        <button type="submit" class="btn btn-primary btn-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+            Register Patient
+        </button>
+    </div>
+</form>

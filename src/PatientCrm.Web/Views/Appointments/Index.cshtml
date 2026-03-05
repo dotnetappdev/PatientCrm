@@ -1,0 +1,66 @@
+@model List<PatientCrm.Core.Entities.Appointment>
+@{
+    ViewData["Title"] = "Appointments";
+    var date = (DateTime)ViewBag.Date;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Appointments</h1>
+        <p class="page-subtitle">@date.ToString("dddd, dd MMMM yyyy")</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="?date=@date.AddDays(-1).ToString("yyyy-MM-dd")" class="btn btn-secondary">← Previous</a>
+        <a href="?date=@DateTime.Today.ToString("yyyy-MM-dd")" class="btn btn-secondary">Today</a>
+        <a href="?date=@date.AddDays(1).ToString("yyyy-MM-dd")" class="btn btn-secondary">Next →</a>
+    </div>
+</div>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr><th>Time</th><th>Patient</th><th>Reason</th><th>Clinician</th><th>Type</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var appt in Model)
+            {
+                <tr>
+                    <td>
+                        <div class="fw-600">@appt.StartTime.ToString("HH:mm")</div>
+                        <div class="patient-meta">@appt.DurationMinutes min</div>
+                    </td>
+                    <td>
+                        @if (appt.Patient != null)
+                        {
+                            <div class="patient-info">
+                                <div class="patient-avatar" style="width: 32px; height: 32px; font-size: 0.7rem;">
+                                    @(appt.Patient.FirstName.Substring(0,1))@(appt.Patient.LastName.Substring(0,1))
+                                </div>
+                                <div>
+                                    <a href="/Patients/Details/@appt.Patient.Id" class="patient-name" style="text-decoration: none; color: var(--text-primary);">@appt.Patient.FullName</a>
+                                </div>
+                            </div>
+                        }
+                    </td>
+                    <td>@(appt.Reason ?? appt.Title)</td>
+                    <td>@appt.Provider?.FullName</td>
+                    <td><span class="badge badge-blue">@appt.AppointmentType</span></td>
+                    <td>
+                        <span class="badge @(appt.Status == PatientCrm.Core.Enums.AppointmentStatus.Completed ? "badge-green" : appt.Status == PatientCrm.Core.Enums.AppointmentStatus.Cancelled ? "badge-red" : appt.Status == PatientCrm.Core.Enums.AppointmentStatus.DidNotAttend ? "badge-amber" : "badge-blue")">
+                            @appt.Status
+                        </span>
+                    </td>
+                </tr>
+            }
+            @if (!Model.Any())
+            {
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                        <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📅</div>
+                        No appointments scheduled for @date.ToString("dd MMMM yyyy")
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

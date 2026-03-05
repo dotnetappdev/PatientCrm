@@ -1,0 +1,551 @@
+@model PatientCrm.Core.Entities.Patient
+@{
+    ViewData["Title"] = Model.FullName;
+}
+
+<div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+        <a href="/Patients" style="color: var(--text-muted); text-decoration: none;">← Patients</a>
+        <div class="patient-avatar" style="width: 52px; height: 52px; font-size: 1.1rem;">@(Model.FirstName.Substring(0,1))@(Model.LastName.Substring(0,1))</div>
+        <div>
+            <h1 class="page-title">@Model.FullName</h1>
+            <div class="d-flex gap-2 align-items-center">
+                @if (!string.IsNullOrEmpty(Model.NhsNumber))
+                {
+                    <span class="nhs-badge">NHS @Model.NhsNumber</span>
+                }
+                @if (!string.IsNullOrEmpty(Model.HscniNumber))
+                {
+                    <span class="hscni-badge">HSCNI @Model.HscniNumber</span>
+                }
+                <span class="badge @(Model.Status == PatientCrm.Core.Enums.PatientStatus.Active ? "badge-green" : "badge-gray")">@Model.Status</span>
+            </div>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/Patients/Edit/@Model.Id" class="btn btn-secondary">Edit</a>
+    </div>
+</div>
+
+<!-- Alerts -->
+@foreach (var alert in Model.Alerts.Where(a => a.IsActive))
+{
+    <div class="alert @(alert.Severity == PatientCrm.Core.Enums.AlertSeverity.Critical ? "alert-danger" : alert.Severity == PatientCrm.Core.Enums.AlertSeverity.High ? "alert-warning" : "alert-info")">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div><strong>@alert.Severity Alert:</strong> @alert.Title — @alert.Description</div>
+    </div>
+}
+
+<!-- Allergies warning -->
+@if (!string.IsNullOrEmpty(Model.Allergies))
+{
+    <div class="alert alert-danger">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+        <strong>⚠ ALLERGY ALERT:</strong>&nbsp;@Model.Allergies
+    </div>
+}
+
+<!-- Tabs -->
+<div class="tabs">
+    <a class="tab-item active" href="#overview" onclick="showTab('overview', this)">Overview</a>
+    <a class="tab-item" href="#notes" onclick="showTab('notes', this)">Clinical Notes (@Model.ClinicalNotes.Count)</a>
+    <a class="tab-item" href="#appointments" onclick="showTab('appointments', this)">Appointments (@Model.Appointments.Count)</a>
+    <a class="tab-item" href="#prescriptions" onclick="showTab('prescriptions', this)">Prescriptions (@Model.Prescriptions.Count)</a>
+    <a class="tab-item" href="#images" onclick="showTab('images', this)">Images &amp; MRI (@Model.MedicalImages.Count)</a>
+    @if (Model.DentalRecord != null)
+    {
+        <a class="tab-item" href="#dental" onclick="showTab('dental', this)">Dental Chart</a>
+    }
+    @if (Model.GpRecord != null)
+    {
+        <a class="tab-item" href="#gp" onclick="showTab('gp', this)">GP Record</a>
+    }
+</div>
+
+<!-- Overview Tab -->
+<div id="overview" class="tab-content">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+        <!-- Personal -->
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Personal Information</h3></div>
+            <dl style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem;">
+                <dt class="form-label">Full Name</dt><dd>@Model.FullName</dd>
+                <dt class="form-label">Date of Birth</dt><dd>@Model.DateOfBirth.ToString("dd MMMM yyyy") (Age: @(DateTime.Today.Year - Model.DateOfBirth.Year))</dd>
+                <dt class="form-label">Gender</dt><dd>@Model.Gender</dd>
+                <dt class="form-label">Blood Group</dt><dd>@Model.BloodGroup</dd>
+                <dt class="form-label">Ethnicity</dt><dd>@(Model.Ethnicity ?? "—")</dd>
+                <dt class="form-label">Language</dt><dd>@(Model.PreferredLanguage ?? "English")</dd>
+            </dl>
+        </div>
+
+        <!-- Contact -->
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Contact &amp; Address</h3></div>
+            <dl style="display: grid; grid-template-columns: 1fr 2fr; gap: 0.5rem 1rem;">
+                <dt class="form-label">Phone</dt><dd>@(Model.PhoneNumber ?? "—")</dd>
+                <dt class="form-label">Mobile</dt><dd>@(Model.MobileNumber ?? "—")</dd>
+                <dt class="form-label">Email</dt><dd>@(Model.Email ?? "—")</dd>
+                <dt class="form-label">Address</dt>
+                <dd>
+                    @Model.AddressLine1<br />
+                    @if (!string.IsNullOrEmpty(Model.AddressLine2)) { <span>@Model.AddressLine2<br /></span> }
+                    @Model.City, @Model.Postcode<br />
+                    <span class="badge badge-blue">@Model.Region</span>
+                </dd>
+            </dl>
+        </div>
+
+        <!-- Emergency Contact -->
+        @if (!string.IsNullOrEmpty(Model.EmergencyContactName))
+        {
+            <div class="card">
+                <div class="card-header"><h3 class="card-title">Emergency Contact</h3></div>
+                <dl style="display: grid; grid-template-columns: 1fr 2fr; gap: 0.5rem 1rem;">
+                    <dt class="form-label">Name</dt><dd>@Model.EmergencyContactName</dd>
+                    <dt class="form-label">Relationship</dt><dd>@Model.EmergencyContactRelationship</dd>
+                    <dt class="form-label">Phone</dt><dd>@Model.EmergencyContactPhone</dd>
+                </dl>
+            </div>
+        }
+
+        <!-- Registered GP -->
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Registered GP</h3></div>
+            <dl style="display: grid; grid-template-columns: 1fr 2fr; gap: 0.5rem 1rem;">
+                <dt class="form-label">GP Name</dt><dd>@(Model.RegisteredGpName ?? "—")</dd>
+                <dt class="form-label">Practice</dt><dd>@(Model.RegisteredGpPractice ?? "—")</dd>
+                <dt class="form-label">ODS Code</dt><dd>@(Model.RegisteredGpOdsCode ?? "—")</dd>
+            </dl>
+        </div>
+    </div>
+</div>
+
+<!-- Clinical Notes Tab -->
+<div id="notes" class="tab-content" style="display:none;">
+    <div class="d-flex justify-between mb-4">
+        <h3 class="card-title">Clinical Notes</h3>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('addNoteModal').classList.add('open')">+ Add Note</button>
+    </div>
+
+    <div class="timeline">
+        @foreach (var note in Model.ClinicalNotes.OrderByDescending(n => n.NoteDate))
+        {
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                    <div class="timeline-header">
+                        <div>
+                            <span class="fw-600">@note.Title</span>
+                            <span class="badge badge-blue" style="margin-left: 0.5rem;">@note.NoteType</span>
+                            <span class="badge badge-purple" style="margin-left: 0.25rem;">@note.Discipline</span>
+                        </div>
+                        <span class="text-muted fs-sm">@note.NoteDate.ToString("dd MMM yyyy HH:mm") · @note.AuthorName</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(note.Subjective))
+                    {
+                        <div style="margin-top: 0.5rem;">
+                            <strong>S:</strong> @note.Subjective<br/>
+                            <strong>O:</strong> @note.Objective<br/>
+                            <strong>A:</strong> @note.Assessment<br/>
+                            <strong>P:</strong> @note.Plan
+                        </div>
+                    }
+                    else
+                    {
+                        <p style="margin-top: 0.5rem; color: var(--text-secondary);">@note.Content</p>
+                    }
+                    @if (note.RequiresFollowUp && note.FollowUpDate.HasValue)
+                    {
+                        <div class="badge badge-amber" style="margin-top: 0.5rem;">Follow-up: @note.FollowUpDate.Value.ToString("dd MMM yyyy")</div>
+                    }
+                </div>
+            </div>
+        }
+        @if (!Model.ClinicalNotes.Any())
+        {
+            <p class="text-muted">No clinical notes recorded yet.</p>
+        }
+    </div>
+</div>
+
+<!-- Appointments Tab -->
+<div id="appointments" class="tab-content" style="display:none;">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr><th>Date/Time</th><th>Title</th><th>Type</th><th>Discipline</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var appt in Model.Appointments.OrderByDescending(a => a.StartTime))
+                {
+                    <tr>
+                        <td>@appt.StartTime.ToString("dd MMM yyyy HH:mm")</td>
+                        <td>@appt.Title</td>
+                        <td><span class="badge badge-blue">@appt.AppointmentType</span></td>
+                        <td><span class="badge badge-purple">@appt.Discipline</span></td>
+                        <td><span class="badge @(appt.Status == PatientCrm.Core.Enums.AppointmentStatus.Completed ? "badge-green" : appt.Status == PatientCrm.Core.Enums.AppointmentStatus.Cancelled ? "badge-red" : "badge-blue")">@appt.Status</span></td>
+                    </tr>
+                }
+                @if (!Model.Appointments.Any())
+                {
+                    <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No appointments recorded</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Prescriptions Tab -->
+<div id="prescriptions" class="tab-content" style="display:none;">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr><th>Medication</th><th>Dosage</th><th>Frequency</th><th>Prescribed</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var rx in Model.Prescriptions.OrderByDescending(p => p.PrescribedDate))
+                {
+                    <tr>
+                        <td>
+                            <div class="fw-600">@rx.MedicationName</div>
+                            @if (rx.IsControlledDrug)
+                            {
+                                <span class="badge badge-red">CD</span>
+                            }
+                        </td>
+                        <td>@rx.Dosage @rx.Unit</td>
+                        <td>@rx.Frequency (@rx.Route)</td>
+                        <td>@rx.PrescribedDate.ToString("dd MMM yyyy")</td>
+                        <td><span class="badge @(rx.Status == PatientCrm.Core.Enums.PrescriptionStatus.Active ? "badge-green" : "badge-gray")">@rx.Status</span></td>
+                    </tr>
+                }
+                @if (!Model.Prescriptions.Any())
+                {
+                    <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No prescriptions recorded</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Images & MRI Tab -->
+<div id="images" class="tab-content" style="display:none;">
+    <div class="d-flex justify-between mb-4">
+        <h3 class="card-title">Medical Images &amp; MRI Scans</h3>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('uploadImageModal').classList.add('open')">+ Upload Image</button>
+    </div>
+
+    <div class="image-grid">
+        @foreach (var img in Model.MedicalImages.OrderByDescending(i => i.ImageDate))
+        {
+            <div class="image-card">
+                @if (img.ImageType == PatientCrm.Core.Enums.ImageType.MriScan || img.ImageType == PatientCrm.Core.Enums.ImageType.CtScan)
+                {
+                    <div class="mri-viewer" style="height: 135px; font-size: 0.8rem;">
+                        <div style="text-align: center;">
+                            <div>⬛ @img.ImageType</div>
+                            <div style="font-size: 0.65rem; margin-top: 0.25rem;">@img.Modality</div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <img src="@img.StoragePath" alt="@img.Title" loading="lazy" onerror="this.src='/images/placeholder.png'" />
+                }
+                <div class="image-card-info">
+                    <div class="image-card-title">@img.Title</div>
+                    <div class="image-card-type">@img.ImageType · @img.ImageDate.ToString("dd MMM yyyy")</div>
+                    @if (!string.IsNullOrEmpty(img.BodyPart))
+                    {
+                        <div class="patient-meta">@img.BodyPart</div>
+                    }
+                </div>
+            </div>
+        }
+        @if (!Model.MedicalImages.Any())
+        {
+            <div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 3rem;">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🩻</div>
+                No images uploaded yet.
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Dental Chart Tab -->
+@if (Model.DentalRecord != null)
+{
+    <div id="dental" class="tab-content" style="display:none;">
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Dental Chart &amp; Record</h3></div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                <div>
+                    <dt class="form-label">Last Examination</dt>
+                    <dd>@(Model.DentalRecord.LastExaminationDate?.ToString("dd MMM yyyy") ?? "—")</dd>
+                </div>
+                <div>
+                    <dt class="form-label">Last Hygiene Visit</dt>
+                    <dd>@(Model.DentalRecord.LastHygieneAppointment?.ToString("dd MMM yyyy") ?? "—")</dd>
+                </div>
+                <div>
+                    <dt class="form-label">Last X-Ray</dt>
+                    <dd>@(Model.DentalRecord.LastXRayDate?.ToString("dd MMM yyyy") ?? "—")</dd>
+                </div>
+                <div>
+                    <dt class="form-label">Periodontal Status</dt>
+                    <dd>@(Model.DentalRecord.PeriodontalStatus ?? "—")</dd>
+                </div>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <div style="font-size: 0.7rem; text-align: center; color: var(--text-muted); margin-bottom: 0.25rem;">Upper Teeth (Right → Left)</div>
+                <div class="dental-chart">
+                    @for (int i = 18; i >= 11; i--)
+                    {
+                        var t = Model.DentalRecord.ToothRecords.FirstOrDefault(tr => tr.ToothNumber == i);
+                        <div class="tooth @(t?.IsMissing == true ? "missing" : t?.HasFilling == true ? "filled" : t?.HasCrown == true ? "crown" : t?.IsExtracted == true ? "extracted" : "")" data-tooth="@i" title="Tooth @i">@i</div>
+                    }
+                    @for (int i = 21; i <= 28; i++)
+                    {
+                        var t = Model.DentalRecord.ToothRecords.FirstOrDefault(tr => tr.ToothNumber == i);
+                        <div class="tooth @(t?.IsMissing == true ? "missing" : t?.HasFilling == true ? "filled" : t?.HasCrown == true ? "crown" : t?.IsExtracted == true ? "extracted" : "")" data-tooth="@i" title="Tooth @i">@i</div>
+                    }
+                </div>
+                <div style="font-size: 0.7rem; text-align: center; color: var(--text-muted); margin-top: 0.25rem; margin-bottom: 0.25rem;">Lower Teeth (Right → Left)</div>
+                <div class="dental-chart">
+                    @for (int i = 48; i >= 41; i--)
+                    {
+                        var t = Model.DentalRecord.ToothRecords.FirstOrDefault(tr => tr.ToothNumber == i);
+                        <div class="tooth @(t?.IsMissing == true ? "missing" : t?.HasFilling == true ? "filled" : t?.HasCrown == true ? "crown" : t?.IsExtracted == true ? "extracted" : "")" data-tooth="@i" title="Tooth @i">@i</div>
+                    }
+                    @for (int i = 31; i <= 38; i++)
+                    {
+                        var t = Model.DentalRecord.ToothRecords.FirstOrDefault(tr => tr.ToothNumber == i);
+                        <div class="tooth @(t?.IsMissing == true ? "missing" : t?.HasFilling == true ? "filled" : t?.HasCrown == true ? "crown" : t?.IsExtracted == true ? "extracted" : "")" data-tooth="@i" title="Tooth @i">@i</div>
+                    }
+                </div>
+            </div>
+
+            <div class="d-flex gap-2" style="margin-top: 1rem; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 0.25rem;"><span class="tooth" style="width: 20px; height: 20px; font-size: 0; background: var(--bg-surface);"></span><span class="fs-sm">Healthy</span></div>
+                <div style="display: flex; align-items: center; gap: 0.25rem;"><span class="tooth filled" style="width: 20px; height: 20px; font-size: 0;"></span><span class="fs-sm">Filled</span></div>
+                <div style="display: flex; align-items: center; gap: 0.25rem;"><span class="tooth crown" style="width: 20px; height: 20px; font-size: 0;"></span><span class="fs-sm">Crown</span></div>
+                <div style="display: flex; align-items: center; gap: 0.25rem;"><span class="tooth extracted" style="width: 20px; height: 20px; font-size: 0;"></span><span class="fs-sm">Extracted</span></div>
+                <div style="display: flex; align-items: center; gap: 0.25rem;"><span class="tooth missing" style="width: 20px; height: 20px; font-size: 0;"></span><span class="fs-sm">Missing</span></div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- GP Record Tab -->
+@if (Model.GpRecord != null)
+{
+    <div id="gp" class="tab-content" style="display:none;">
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">GP Clinical Record</h3></div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem;">
+                <div>
+                    <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.5rem;">Long Term Conditions</h4>
+                    <div class="d-flex gap-1" style="flex-wrap: wrap;">
+                        @if (Model.GpRecord.HasDiabetes) { <span class="badge badge-amber">Diabetes @Model.GpRecord.DiabetesType</span> }
+                        @if (Model.GpRecord.HasHypertension) { <span class="badge badge-red">Hypertension</span> }
+                        @if (Model.GpRecord.HasAsthma) { <span class="badge badge-blue">Asthma</span> }
+                        @if (Model.GpRecord.HasCopd) { <span class="badge badge-amber">COPD</span> }
+                        @if (Model.GpRecord.HasHeartDisease) { <span class="badge badge-red">Heart Disease</span> }
+                        @if (Model.GpRecord.HasStrokeHistory) { <span class="badge badge-purple">Stroke History</span> }
+                        @if (Model.GpRecord.HasCancer) { <span class="badge badge-red">Cancer</span> }
+                        @if (Model.GpRecord.HasMentalHealthCondition) { <span class="badge badge-purple">Mental Health</span> }
+                        @if (!Model.GpRecord.HasDiabetes && !Model.GpRecord.HasHypertension && !Model.GpRecord.HasAsthma && !Model.GpRecord.HasCopd) { <span class="text-muted fs-sm">None recorded</span> }
+                    </div>
+                </div>
+                <div>
+                    <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.5rem;">Disease Registers</h4>
+                    <div class="d-flex gap-1" style="flex-wrap: wrap;">
+                        @if (Model.GpRecord.OnPalliativeCareRegister) { <span class="badge badge-gray">Palliative Care</span> }
+                        @if (Model.GpRecord.OnDementiaRegister) { <span class="badge badge-purple">Dementia</span> }
+                        @if (Model.GpRecord.OnEpilepsyRegister) { <span class="badge badge-amber">Epilepsy</span> }
+                        @if (Model.GpRecord.OnAtrialFibrillationRegister) { <span class="badge badge-red">Atrial Fibrillation</span> }
+                    </div>
+                </div>
+                <div>
+                    <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.5rem;">Baseline Observations</h4>
+                    @if (Model.GpRecord.BaselineBloodPressureSystolic.HasValue)
+                    {
+                        <div class="fs-sm">BP: @Model.GpRecord.BaselineBloodPressureSystolic/@Model.GpRecord.BaselineBloodPressureDiastolic mmHg</div>
+                    }
+                    @if (Model.GpRecord.BaselineHba1c.HasValue)
+                    {
+                        <div class="fs-sm">HbA1c: @Model.GpRecord.BaselineHba1c mmol/mol</div>
+                    }
+                    @if (Model.GpRecord.BaselineBmi.HasValue)
+                    {
+                        <div class="fs-sm">BMI: @Model.GpRecord.BaselineBmi</div>
+                    }
+                    @if (Model.GpRecord.BaselineCholesterol.HasValue)
+                    {
+                        <div class="fs-sm">Cholesterol: @Model.GpRecord.BaselineCholesterol mmol/L</div>
+                    }
+                </div>
+            </div>
+
+            @if (Model.GpRecord.Referrals.Any())
+            {
+                <div style="margin-top: 1.5rem;">
+                    <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.75rem;">Referrals</h4>
+                    <table>
+                        <thead>
+                            <tr><th>Specialty</th><th>Hospital</th><th>Date</th><th>Urgent</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var referral in Model.GpRecord.Referrals)
+                            {
+                                <tr>
+                                    <td>@referral.Specialty</td>
+                                    <td>@(referral.HospitalName ?? "—")</td>
+                                    <td>@referral.ReferralDate.ToString("dd MMM yyyy")</td>
+                                    <td>@(referral.IsUrgent ? "⚠ Yes" : "No")</td>
+                                    <td><span class="badge badge-blue">@(referral.Status ?? "Pending")</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<!-- Add Note Modal -->
+<div class="modal-backdrop" id="addNoteModal">
+    <div class="modal" style="max-width: 700px;">
+        <div class="modal-header">
+            <h3 class="modal-title">Add Clinical Note</h3>
+            <button class="btn-icon" onclick="document.getElementById('addNoteModal').classList.remove('open')">✕</button>
+        </div>
+        <form method="post" action="/Patients/AddNote">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="patientId" value="@Model.Id" />
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Note Type</label>
+                    <select name="NoteType" class="form-control">
+                        @foreach (var nt in Enum.GetValues<PatientCrm.Core.Enums.NoteType>())
+                        {
+                            <option value="@nt">@nt</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Discipline</label>
+                    <select name="Discipline" class="form-control">
+                        @foreach (var d in Enum.GetValues<PatientCrm.Core.Enums.DisciplineType>())
+                        {
+                            <option value="@d">@d</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Title</label>
+                <input name="Title" class="form-control" required placeholder="e.g. Annual Diabetes Review" />
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Subjective (S)</label>
+                    <textarea name="Subjective" class="form-control" rows="2" placeholder="What the patient reports..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Objective (O)</label>
+                    <textarea name="Objective" class="form-control" rows="2" placeholder="Examination findings..."></textarea>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Assessment (A)</label>
+                    <textarea name="Assessment" class="form-control" rows="2" placeholder="Diagnosis / impression..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Plan (P)</label>
+                    <textarea name="Plan" class="form-control" rows="2" placeholder="Treatment / management plan..."></textarea>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Full Note</label>
+                <textarea name="Content" class="form-control" rows="3" required placeholder="Complete note text..."></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">SNOMED Code</label>
+                    <input name="SnomedCode" class="form-control" placeholder="e.g. 44054006" />
+                </div>
+                <div class="form-group form-check" style="align-self: flex-end; margin-bottom: 1rem;">
+                    <input type="checkbox" name="RequiresFollowUp" id="followUpCheck" value="true" />
+                    <label for="followUpCheck" class="form-label" style="margin: 0;">Requires Follow-Up</label>
+                </div>
+            </div>
+            <div class="d-flex justify-between" style="margin-top: 1rem;">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('addNoteModal').classList.remove('open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Note</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Upload Image Modal -->
+<div class="modal-backdrop" id="uploadImageModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">Upload Medical Image</h3>
+            <button class="btn-icon" onclick="document.getElementById('uploadImageModal').classList.remove('open')">✕</button>
+        </div>
+        <form method="post" action="/Patients/UploadImage" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="patientId" value="@Model.Id" />
+            <div class="form-group">
+                <label class="form-label">Image Title</label>
+                <input name="title" class="form-control" required placeholder="e.g. Chest X-Ray, MRI Brain" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Image Type</label>
+                <select name="imageType" class="form-control">
+                    @foreach (var it in Enum.GetValues<PatientCrm.Core.Enums.ImageType>())
+                    {
+                        <option value="@it">@it</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea name="description" class="form-control" rows="2" placeholder="Optional description..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">File</label>
+                <div class="upload-dropzone" style="border: 2px dashed var(--border); border-radius: var(--radius); padding: 2rem; text-align: center; cursor: pointer;">
+                    <input type="file" name="file" required accept="image/*,.dcm" style="display: none;" id="imageFile" />
+                    <label for="imageFile" style="cursor: pointer; color: var(--text-secondary);">
+                        <div>🩻 Drop files here or <span style="color: var(--primary);">browse</span></div>
+                        <div class="fs-sm text-muted mt-2">Supports: JPEG, PNG, DICOM (.dcm), PDF</div>
+                    </label>
+                    <div id="imagePreviewContainer" style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center;"></div>
+                </div>
+            </div>
+            <div class="d-flex justify-between" style="margin-top: 1rem;">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('uploadImageModal').classList.remove('open')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function showTab(tabId, link) {
+    document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+    document.getElementById(tabId).style.display = 'block';
+    link.classList.add('active');
+    return false;
+}
+</script>
+}
