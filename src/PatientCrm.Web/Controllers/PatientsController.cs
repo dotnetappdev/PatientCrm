@@ -58,7 +58,9 @@ public class PatientsController : Controller
     public async Task<IActionResult> Details(Guid id)
     {
         var tenantId = GetTenantId();
-        var patient = await _context.Patients
+        var isSuperAdmin = User.IsInRole("SuperAdmin");
+
+        var query = _context.Patients
             .Include(p => p.ClinicalNotes.Where(n => !n.IsDeleted))
                 .ThenInclude(n => n.Images.Where(i => !i.IsDeleted))
             .Include(p => p.Appointments.Where(a => !a.IsDeleted))
@@ -69,7 +71,12 @@ public class PatientsController : Controller
                 .ThenInclude(d => d!.ToothRecords.Where(t => !t.IsDeleted))
             .Include(p => p.GpRecord)
                 .ThenInclude(g => g!.Referrals.Where(r => !r.IsDeleted))
-            .FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId && !p.IsDeleted);
+            .Where(p => p.Id == id && !p.IsDeleted);
+
+        if (!isSuperAdmin)
+            query = query.Where(p => p.TenantId == tenantId);
+
+        var patient = await query.FirstOrDefaultAsync();
 
         if (patient == null) return NotFound();
         return View(patient);
@@ -232,5 +239,55 @@ public class PatientsController : Controller
 
         TempData["SuccessMessage"] = "Image uploaded successfully.";
         return RedirectToAction(nameof(Details), new { id = patientId });
+    }
+
+    // Save / update a single tooth record from the interactive dental chart
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "SuperAdmin,TenantAdmin,GP,Dentist,Consultant,Nurse")]
+    public async Task<IActionResult> SaveToothRecord(Guid patientId, Guid dentalRecordId, int toothNumber, ToothRecord toothRecord)
+    {
+        var existing = await _context.ToothRecords
+            .FirstOrDefaultAsync(t => t.DentalRecordId == dentalRecordId && t.ToothNumber == toothNumber && !t.IsDeleted);
+
+        if (existing == null)
+        {
+            toothRecord.TenantId = GetTenantId();
+            toothRecord.DentalRecordId = dentalRecordId;
+            toothRecord.ToothNumber = toothNumber;
+            _context.ToothRecords.Add(toothRecord);
+        }
+        else
+        {
+            existing.IsMissing = toothRecord.IsMissing;
+            existing.IsExtracted = toothRecord.IsExtracted;
+            existing.HasDecay = toothRecord.HasDecay;
+            existing.HasFilling = toothRecord.HasFilling;
+            existing.FillingType = toothRecord.FillingType;
+            existing.HasCrown = toothRecord.HasCrown;
+            existing.CrownMaterial = toothRecord.CrownMaterial;
+            existing.HasBridge = toothRecord.HasBridge;
+            existing.HasVeneer = toothRecord.HasVeneer;
+            existing.HasImplant = toothRecord.HasImplant;
+            existing.HasRootCanal = toothRecord.HasRootCanal;
+            existing.HasAbscess = toothRecord.HasAbscess;
+            existing.HasFracture = toothRecord.HasFracture;
+            existing.HasSensitivity = toothRecord.HasSensitivity;
+            existing.HasGumDisease = toothRecord.HasGumDisease;
+            existing.HasChipping = toothRecord.HasChipping;
+            existing.HasWearing = toothRecord.HasWearing;
+            existing.HasOverhang = toothRecord.HasOverhang;
+            existing.IsWatchAndWait = toothRecord.IsWatchAndWait;
+            existing.Surfaces = toothRecord.Surfaces;
+            existing.Notes = toothRecord.Notes;
+            existing.TreatmentPlan = toothRecord.TreatmentPlan;
+            existing.TreatmentDate = toothRecord.TreatmentDate;
+            existing.NextReviewDate = toothRecord.NextReviewDate;
+            existing.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+        TempData["SuccessMessage"] = $"Tooth #{toothNumber} record saved.";
+        return RedirectToAction(nameof(Details), new { id = patientId, _anchor = "dental" });
     }
 }

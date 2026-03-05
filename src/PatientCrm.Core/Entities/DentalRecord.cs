@@ -49,14 +49,33 @@ public class ToothRecord : BaseEntity
     public int ToothNumber { get; set; }
     public string? ToothName { get; set; }
     public bool IsPrimary { get; set; }
+
+    // Status flags – all possible dental defects
     public bool IsMissing { get; set; }
     public bool IsExtracted { get; set; }
-    public bool HasCrown { get; set; }
+    public bool HasDecay { get; set; }
     public bool HasFilling { get; set; }
+    public string? FillingType { get; set; }   // Amalgam, Composite, GlassIonomer, Gold
+    public bool HasCrown { get; set; }
+    public string? CrownMaterial { get; set; } // PFM, ZirconiaAll-Ceramic, Metal
+    public bool HasBridge { get; set; }
+    public bool HasVeneer { get; set; }
     public bool HasImplant { get; set; }
     public bool HasRootCanal { get; set; }
-    public bool HasVeneer { get; set; }
-    public string? Notes { get; set; }
+    public bool HasAbscess { get; set; }
+    public bool HasFracture { get; set; }
+    public bool HasSensitivity { get; set; }
+    public bool HasGumDisease { get; set; }
+    public bool HasChipping { get; set; }
+    public bool HasWearing { get; set; }
+    public bool HasOverhang { get; set; }
+    public bool IsWatchAndWait { get; set; }
+
+    // Surfaces affected (comma-separated: M,D,B,L,O,P,I)
     public string? Surfaces { get; set; }
+
+    public string? Notes { get; set; }
+    public string? TreatmentPlan { get; set; }
     public DateTime? TreatmentDate { get; set; }
+    public DateTime? NextReviewDate { get; set; }
 }

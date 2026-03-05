@@ -1,6 +1,21 @@
 @model PatientCrm.Core.Entities.Patient
+@using PatientCrm.Core.Entities
 @{
     ViewData["Title"] = Model.FullName;
+
+    // Helper: pick CSS class from tooth record state
+    string GetToothClass(ToothRecord? t)
+    {
+        if (t == null) return "";
+        if (t.IsMissing || t.IsExtracted) return "missing";
+        if (t.HasDecay) return "tooth-decay";
+        if (t.HasImplant) return "tooth-implant";
+        if (t.HasRootCanal) return "tooth-rct";
+        if (t.HasFilling) return "filled";
+        if (t.HasCrown) return "crown";
+        if (t.HasBridge || t.HasVeneer) return "tooth-bridge";
+        return "";
+    }
 }
 
 <div class="page-header">
@@ -275,11 +290,153 @@
 <!-- Dental Chart Tab -->
 @if (Model.DentalRecord != null)
 {
-    <div id="dental" class="tab-content" style="display:none;">
-        <div class="card">
-            <div class="card-header"><h3 class="card-title">Dental Chart &amp; Record</h3></div>
+    // Serialize tooth records for JS lookup
+    var toothData = Model.DentalRecord.ToothRecords
+        .Where(tr => !tr.IsDeleted)
+        .ToDictionary(tr => tr.ToothNumber.ToString(), tr => new {
+            missing = tr.IsMissing, extracted = tr.IsExtracted,
+            decay = tr.HasDecay, filling = tr.HasFilling, fillingType = tr.FillingType,
+            crown = tr.HasCrown, crownMaterial = tr.CrownMaterial,
+            bridge = tr.HasBridge, veneer = tr.HasVeneer, implant = tr.HasImplant,
+            rootCanal = tr.HasRootCanal, abscess = tr.HasAbscess, fracture = tr.HasFracture,
+            sensitivity = tr.HasSensitivity, gumDisease = tr.HasGumDisease,
+            chipping = tr.HasChipping, wearing = tr.HasWearing, overhang = tr.HasOverhang,
+            watchWait = tr.IsWatchAndWait, surfaces = tr.Surfaces ?? "",
+            notes = tr.Notes ?? "", plan = tr.TreatmentPlan ?? ""
+        });
+    var toothJson = System.Text.Json.JsonSerializer.Serialize(toothData);
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+    <div id="dental" class="tab-content" style="display:none;">
+        <div class="d-flex justify-between align-items-center mb-4">
+            <div>
+                <h2 class="page-title" style="font-size: 1.25rem;">Dental Chart</h2>
+                <p class="page-subtitle">Click any tooth to view or record conditions</p>
+            </div>
+            <a href="/Patients/UploadImage?patientId=@Model.Id&defaultType=DentalXRay"
+               class="btn btn-secondary btn-sm"
+               onclick="document.getElementById('uploadImageModal').classList.add('open'); document.querySelector('[name=imageType]').value='DentalXRay'; return false;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+                Upload X-Ray / OPG
+            </a>
+        </div>
+
+        <!-- Summary stats -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; margin-bottom: 1.5rem;">
+            @{
+                var teeth = Model.DentalRecord.ToothRecords.Where(t => !t.IsDeleted).ToList();
+                int totalMissing = teeth.Count(t => t.IsMissing || t.IsExtracted);
+                int totalFilled = teeth.Count(t => t.HasFilling);
+                int totalCrowns = teeth.Count(t => t.HasCrown);
+                int totalImplants = teeth.Count(t => t.HasImplant);
+                int totalDecay = teeth.Count(t => t.HasDecay);
+                int totalRct = teeth.Count(t => t.HasRootCanal);
+            }
+            <div class="stat-card" style="padding: 0.75rem; flex-direction: column; text-align: center; gap: 0.25rem;">
+                <div class="fw-700" style="font-size: 1.25rem; color: var(--danger);">@totalDecay</div>
+                <div class="patient-meta">Decay</div>
+            </div>
+            <div class="stat-card" style="padding: 0.75rem; flex-direction: column; text-align: center; gap: 0.25rem;">
+                <div class="fw-700" style="font-size: 1.25rem; color: #d97706;">@totalFilled</div>
+                <div class="patient-meta">Fillings</div>
+            </div>
+            <div class="stat-card" style="padding: 0.75rem; flex-direction: column; text-align: center; gap: 0.25rem;">
+                <div class="fw-700" style="font-size: 1.25rem; color: var(--primary);">@totalCrowns</div>
+                <div class="patient-meta">Crowns</div>
+            </div>
+            <div class="stat-card" style="padding: 0.75rem; flex-direction: column; text-align: center; gap: 0.25rem;">
+                <div class="fw-700" style="font-size: 1.25rem; color: #15803d;">@totalImplants</div>
+                <div class="patient-meta">Implants</div>
+            </div>
+            <div class="stat-card" style="padding: 0.75rem; flex-direction: column; text-align: center; gap: 0.25rem;">
+                <div class="fw-700" style="font-size: 1.25rem; color: var(--secondary);">@totalRct</div>
+                <div class="patient-meta">Root Canals</div>
+            </div>
+            <div class="stat-card" style="padding: 0.75rem; flex-direction: column; text-align: center; gap: 0.25rem;">
+                <div class="fw-700" style="font-size: 1.25rem; color: #dc2626;">@totalMissing</div>
+                <div class="patient-meta">Missing</div>
+            </div>
+        </div>
+
+        <!-- FDI dental chart -->
+        <div class="card">
+            <div style="overflow-x: auto; padding: 0.5rem 0;">
+                <!-- Upper arch label -->
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; padding: 0 1rem;">
+                    <span class="patient-meta" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; min-width: 60px; text-align: right;">Upper R</span>
+                    <div style="flex: 1; height: 1px; background: var(--border);"></div>
+                    <span class="patient-meta" style="font-size: 0.65rem;">Upper L</span>
+                </div>
+
+                <!-- Upper teeth row (FDI: right side 18-11, left side 21-28) -->
+                <div style="display: flex; justify-content: center; gap: 3px; padding: 0 1rem; flex-wrap: nowrap;">
+                    @for (int i = 18; i >= 11; i--)
+                    {
+                        var t = Model.DentalRecord.ToothRecords.FirstOrDefault(tr => tr.ToothNumber == i && !tr.IsDeleted);
+                        var cssClass = GetToothClass(t);
+                        <button type="button" class="tooth tooth-btn @cssClass" data-tooth="@i" title="Tooth @i — click to edit">
+                            <span style="font-size: 0.6rem; display: block; line-height: 1.2;">@i</span>
+                        </button>
+                    }
+                    <div style="width: 2px; background: var(--border); margin: 0 4px; border-radius: 2px;"></div>
+                    @for (int i = 21; i <= 28; i++)
+                    {
+                        var t = Model.DentalRecord.ToothRecords.FirstOrDefault(tr => tr.ToothNumber == i && !tr.IsDeleted);
+                        var cssClass = GetToothClass(t);
+                        <button type="button" class="tooth tooth-btn @cssClass" data-tooth="@i" title="Tooth @i — click to edit">
+                            <span style="font-size: 0.6rem; display: block; line-height: 1.2;">@i</span>
+                        </button>
+                    }
+                </div>
+
+                <div style="height: 12px;"></div>
+
+                <!-- Lower teeth row (FDI: right side 48-41, left side 31-38) -->
+                <div style="display: flex; justify-content: center; gap: 3px; padding: 0 1rem; flex-wrap: nowrap;">
+                    @for (int i = 48; i >= 41; i--)
+                    {
+                        var t = Model.DentalRecord.ToothRecords.FirstOrDefault(tr => tr.ToothNumber == i && !tr.IsDeleted);
+                        var cssClass = GetToothClass(t);
+                        <button type="button" class="tooth tooth-btn @cssClass" data-tooth="@i" title="Tooth @i — click to edit">
+                            <span style="font-size: 0.6rem; display: block; line-height: 1.2;">@i</span>
+                        </button>
+                    }
+                    <div style="width: 2px; background: var(--border); margin: 0 4px; border-radius: 2px;"></div>
+                    @for (int i = 31; i <= 38; i++)
+                    {
+                        var t = Model.DentalRecord.ToothRecords.FirstOrDefault(tr => tr.ToothNumber == i && !tr.IsDeleted);
+                        var cssClass = GetToothClass(t);
+                        <button type="button" class="tooth tooth-btn @cssClass" data-tooth="@i" title="Tooth @i — click to edit">
+                            <span style="font-size: 0.6rem; display: block; line-height: 1.2;">@i</span>
+                        </button>
+                    }
+                </div>
+
+                <!-- Lower arch label -->
+                <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem; padding: 0 1rem;">
+                    <span class="patient-meta" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; min-width: 60px; text-align: right;">Lower R</span>
+                    <div style="flex: 1; height: 1px; background: var(--border);"></div>
+                    <span class="patient-meta" style="font-size: 0.65rem;">Lower L</span>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="d-flex gap-3" style="padding: 1rem; flex-wrap: wrap; border-top: 1px solid var(--border);">
+                <div class="d-flex align-items-center gap-1"><span class="tooth" style="width: 22px; height: 22px; font-size: 0; pointer-events: none;"></span><span class="fs-sm">Healthy</span></div>
+                <div class="d-flex align-items-center gap-1"><span class="tooth" style="width: 22px; height: 22px; font-size: 0; pointer-events: none; background: #fee2e2;"></span><span class="fs-sm text-danger">Decay</span></div>
+                <div class="d-flex align-items-center gap-1"><span class="tooth filled" style="width: 22px; height: 22px; font-size: 0; pointer-events: none;"></span><span class="fs-sm">Filling</span></div>
+                <div class="d-flex align-items-center gap-1"><span class="tooth crown" style="width: 22px; height: 22px; font-size: 0; pointer-events: none;"></span><span class="fs-sm">Crown</span></div>
+                <div class="d-flex align-items-center gap-1"><span class="tooth" style="width: 22px; height: 22px; font-size: 0; pointer-events: none; background: #dcfce7;"></span><span class="fs-sm">Implant</span></div>
+                <div class="d-flex align-items-center gap-1"><span class="tooth" style="width: 22px; height: 22px; font-size: 0; pointer-events: none; background: #fce7f3;"></span><span class="fs-sm">Root Canal</span></div>
+                <div class="d-flex align-items-center gap-1"><span class="tooth extracted" style="width: 22px; height: 22px; font-size: 0; pointer-events: none;"></span><span class="fs-sm">Extracted</span></div>
+                <div class="d-flex align-items-center gap-1"><span class="tooth missing" style="width: 22px; height: 22px; font-size: 0; pointer-events: none;"></span><span class="fs-sm">Missing</span></div>
+                <div class="d-flex align-items-center gap-1"><span class="tooth" style="width: 22px; height: 22px; font-size: 0; pointer-events: none; background: #ede9fe;"></span><span class="fs-sm">Bridge/Veneer</span></div>
+            </div>
+        </div>
+
+        <!-- Dental record summary -->
+        <div class="card" style="margin-top: 1rem;">
+            <div class="card-header"><h3 class="card-title">Dental Record Summary</h3></div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
                 <div>
                     <dt class="form-label">Last Examination</dt>
                     <dd>@(Model.DentalRecord.LastExaminationDate?.ToString("dd MMM yyyy") ?? "—")</dd>
@@ -296,46 +453,257 @@
                     <dt class="form-label">Periodontal Status</dt>
                     <dd>@(Model.DentalRecord.PeriodontalStatus ?? "—")</dd>
                 </div>
-            </div>
-
-            <div style="overflow-x: auto;">
-                <div style="font-size: 0.7rem; text-align: center; color: var(--text-muted); margin-bottom: 0.25rem;">Upper Teeth (Right → Left)</div>
-                <div class="dental-chart">
-                    @for (int i = 18; i >= 11; i--)
-                    {
-                        var t = Model.DentalRecord.ToothRecords.FirstOrDefault(tr => tr.ToothNumber == i);
-                        <div class="tooth @(t?.IsMissing == true ? "missing" : t?.HasFilling == true ? "filled" : t?.HasCrown == true ? "crown" : t?.IsExtracted == true ? "extracted" : "")" data-tooth="@i" title="Tooth @i">@i</div>
-                    }
-                    @for (int i = 21; i <= 28; i++)
-                    {
-                        var t = Model.DentalRecord.ToothRecords.FirstOrDefault(tr => tr.ToothNumber == i);
-                        <div class="tooth @(t?.IsMissing == true ? "missing" : t?.HasFilling == true ? "filled" : t?.HasCrown == true ? "crown" : t?.IsExtracted == true ? "extracted" : "")" data-tooth="@i" title="Tooth @i">@i</div>
-                    }
-                </div>
-                <div style="font-size: 0.7rem; text-align: center; color: var(--text-muted); margin-top: 0.25rem; margin-bottom: 0.25rem;">Lower Teeth (Right → Left)</div>
-                <div class="dental-chart">
-                    @for (int i = 48; i >= 41; i--)
-                    {
-                        var t = Model.DentalRecord.ToothRecords.FirstOrDefault(tr => tr.ToothNumber == i);
-                        <div class="tooth @(t?.IsMissing == true ? "missing" : t?.HasFilling == true ? "filled" : t?.HasCrown == true ? "crown" : t?.IsExtracted == true ? "extracted" : "")" data-tooth="@i" title="Tooth @i">@i</div>
-                    }
-                    @for (int i = 31; i <= 38; i++)
-                    {
-                        var t = Model.DentalRecord.ToothRecords.FirstOrDefault(tr => tr.ToothNumber == i);
-                        <div class="tooth @(t?.IsMissing == true ? "missing" : t?.HasFilling == true ? "filled" : t?.HasCrown == true ? "crown" : t?.IsExtracted == true ? "extracted" : "")" data-tooth="@i" title="Tooth @i">@i</div>
-                    }
-                </div>
-            </div>
-
-            <div class="d-flex gap-2" style="margin-top: 1rem; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 0.25rem;"><span class="tooth" style="width: 20px; height: 20px; font-size: 0; background: var(--bg-surface);"></span><span class="fs-sm">Healthy</span></div>
-                <div style="display: flex; align-items: center; gap: 0.25rem;"><span class="tooth filled" style="width: 20px; height: 20px; font-size: 0;"></span><span class="fs-sm">Filled</span></div>
-                <div style="display: flex; align-items: center; gap: 0.25rem;"><span class="tooth crown" style="width: 20px; height: 20px; font-size: 0;"></span><span class="fs-sm">Crown</span></div>
-                <div style="display: flex; align-items: center; gap: 0.25rem;"><span class="tooth extracted" style="width: 20px; height: 20px; font-size: 0;"></span><span class="fs-sm">Extracted</span></div>
-                <div style="display: flex; align-items: center; gap: 0.25rem;"><span class="tooth missing" style="width: 20px; height: 20px; font-size: 0;"></span><span class="fs-sm">Missing</span></div>
+                @if (Model.DentalRecord.ReferredToOralSurgery || Model.DentalRecord.ReferredToOrthodontics || Model.DentalRecord.ReferredToPeriodontist)
+                {
+                    <div>
+                        <dt class="form-label">Referrals</dt>
+                        <dd class="d-flex gap-1" style="flex-wrap: wrap;">
+                            @if (Model.DentalRecord.ReferredToOralSurgery) { <span class="badge badge-red">Oral Surgery</span> }
+                            @if (Model.DentalRecord.ReferredToOrthodontics) { <span class="badge badge-blue">Orthodontics</span> }
+                            @if (Model.DentalRecord.ReferredToPeriodontist) { <span class="badge badge-amber">Periodontist</span> }
+                        </dd>
+                    </div>
+                }
             </div>
         </div>
     </div>
+
+    <!-- ── Tooth Detail Modal ─────────────────────────────────────────────── -->
+    <div class="modal-backdrop" id="toothModal">
+        <div class="modal" style="max-width: 680px;">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title" id="toothModalTitle">Tooth #<span id="toothModalNum"></span></h3>
+                    <p class="page-subtitle" style="margin: 0;">Record conditions and treatment for this tooth</p>
+                </div>
+                <button class="btn-icon" type="button" onclick="document.getElementById('toothModal').classList.remove('open')">✕</button>
+            </div>
+            <form method="post" action="/Patients/SaveToothRecord" id="toothForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="patientId" value="@Model.Id" />
+                <input type="hidden" name="dentalRecordId" value="@Model.DentalRecord.Id" />
+                <input type="hidden" name="toothNumber" id="toothNumberInput" value="" />
+
+                <!-- Status Grid -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
+                    @{
+                        var conditions = new[]
+                        {
+                            ("IsMissing", "🚫", "Missing", "badge-gray"),
+                            ("IsExtracted", "❌", "Extracted", "badge-red"),
+                            ("HasDecay", "🦠", "Decay / Caries", "badge-red"),
+                            ("HasFilling", "⬛", "Filling", "badge-amber"),
+                            ("HasCrown", "👑", "Crown", "badge-purple"),
+                            ("HasBridge", "🌉", "Bridge Abutment", "badge-purple"),
+                            ("HasVeneer", "✨", "Veneer", "badge-blue"),
+                            ("HasImplant", "🔩", "Implant", "badge-green"),
+                            ("HasRootCanal", "🔴", "Root Canal", "badge-red"),
+                            ("HasAbscess", "💥", "Abscess / Swelling", "badge-red"),
+                            ("HasFracture", "💔", "Fracture / Crack", "badge-amber"),
+                            ("HasSensitivity", "❄️", "Sensitivity", "badge-blue"),
+                            ("HasGumDisease", "🩸", "Gum Disease", "badge-red"),
+                            ("HasChipping", "⚡", "Chipping / Wear", "badge-amber"),
+                            ("IsWatchAndWait", "👁️", "Watch &amp; Wait", "badge-gray"),
+                        };
+                    }
+                    @foreach (var (field, icon, label, _) in conditions)
+                    {
+                        <label style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.5rem 0.625rem; cursor: pointer; transition: all 0.15s;" class="condition-check">
+                            <input type="checkbox" name="@field" value="true" id="chk_@field"
+                                   style="width: 16px; height: 16px; cursor: pointer; flex-shrink: 0;" />
+                            <span style="font-size: 0.8rem; font-weight: 500;">@icon @label</span>
+                        </label>
+                    }
+                </div>
+
+                <!-- Filling Type (conditional) -->
+                <div id="fillingTypeRow" style="display: none;" class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Filling Material</label>
+                        <select name="FillingType" class="form-control">
+                            <option value="">— Select —</option>
+                            <option value="Amalgam">Amalgam (silver)</option>
+                            <option value="Composite">Composite (tooth-coloured)</option>
+                            <option value="GlassIonomer">Glass Ionomer</option>
+                            <option value="Gold">Gold</option>
+                            <option value="Ceramic">Ceramic / Porcelain</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Crown Material</label>
+                        <select name="CrownMaterial" class="form-control">
+                            <option value="">— Select —</option>
+                            <option value="PFM">PFM (Porcelain-fused-to-metal)</option>
+                            <option value="AllCeramic">All-Ceramic / Zirconia</option>
+                            <option value="Metal">Full Metal</option>
+                            <option value="EMax">e.max Lithium Disilicate</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Surfaces Affected -->
+                <div class="form-group">
+                    <label class="form-label">Surfaces Affected</label>
+                    <div class="d-flex gap-2" style="flex-wrap: wrap;">
+                        @foreach (var surf in new[] { ("M","Mesial"), ("D","Distal"), ("B","Buccal"), ("L","Lingual"), ("O","Occlusal"), ("P","Palatal"), ("I","Incisal") })
+                        {
+                            <label style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; cursor: pointer;">
+                                <input type="checkbox" class="surface-check" data-surface="@surf.Item1"
+                                       style="width: 15px; height: 15px; cursor: pointer;" />
+                                <span><strong>@surf.Item1</strong> — @surf.Item2</span>
+                            </label>
+                        }
+                    </div>
+                    <input type="hidden" name="Surfaces" id="surfacesInput" value="" />
+                </div>
+
+                <!-- Notes & Plan -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Clinical Notes</label>
+                        <textarea name="Notes" id="toothNotes" class="form-control" rows="2"
+                                  placeholder="Observations for this tooth…"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Treatment Plan</label>
+                        <textarea name="TreatmentPlan" id="toothPlan" class="form-control" rows="2"
+                                  placeholder="Planned treatment…"></textarea>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Treatment Date</label>
+                        <input type="date" name="TreatmentDate" id="treatmentDate" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Next Review Date</label>
+                        <input type="date" name="NextReviewDate" id="nextReviewDate" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="d-flex justify-between" style="margin-top: 1rem;">
+                    <button type="button" class="btn btn-secondary"
+                        onclick="document.getElementById('toothModal').classList.remove('open')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">💾 Save Tooth Record</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+    // Tooth data from server
+    var toothData = @Html.Raw(toothJson);
+
+    // Compute display class for each tooth dynamically (matches server-side GetToothClass)
+    function getToothDisplayClass(d) {
+        if (!d) return '';
+        if (d.missing || d.extracted) return 'missing';
+        if (d.decay) return 'tooth-decay';
+        if (d.implant) return 'tooth-implant';
+        if (d.rootCanal) return 'tooth-rct';
+        if (d.filling) return 'filled';
+        if (d.crown) return 'crown';
+        if (d.bridge || d.veneer) return 'tooth-bridge';
+        return '';
+    }
+
+    // Apply colours to all teeth on page load
+    document.querySelectorAll('[data-tooth]').forEach(btn => {
+        var num = btn.dataset.tooth;
+        var d = toothData[num];
+        btn.className = btn.className.replace(/\btooth-\S+\b/g, '').trim();
+        if (d) {
+            var cls = getToothDisplayClass(d);
+            if (cls) btn.classList.add(cls);
+        }
+    });
+
+    // Open modal when tooth clicked
+    document.querySelectorAll('[data-tooth]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            var num = this.dataset.tooth;
+            var d = toothData[num] || {};
+
+            // Set heading
+            document.getElementById('toothModalNum').textContent = num;
+            document.getElementById('toothNumberInput').value = num;
+
+            // Reset all checkboxes
+            document.querySelectorAll('#toothForm input[type=checkbox]').forEach(c => c.checked = false);
+
+            // Populate checkbox states from data
+            if (d.missing)     setCheck('IsMissing', true);
+            if (d.extracted)   setCheck('IsExtracted', true);
+            if (d.decay)       setCheck('HasDecay', true);
+            if (d.filling)     setCheck('HasFilling', true);
+            if (d.crown)       setCheck('HasCrown', true);
+            if (d.bridge)      setCheck('HasBridge', true);
+            if (d.veneer)      setCheck('HasVeneer', true);
+            if (d.implant)     setCheck('HasImplant', true);
+            if (d.rootCanal)   setCheck('HasRootCanal', true);
+            if (d.abscess)     setCheck('HasAbscess', true);
+            if (d.fracture)    setCheck('HasFracture', true);
+            if (d.sensitivity) setCheck('HasSensitivity', true);
+            if (d.gumDisease)  setCheck('HasGumDisease', true);
+            if (d.chipping)    setCheck('HasChipping', true);
+            if (d.watchWait)   setCheck('IsWatchAndWait', true);
+
+            // Filling / crown material
+            var ft = document.querySelector('[name=FillingType]');
+            var cm = document.querySelector('[name=CrownMaterial]');
+            if (ft) ft.value = d.fillingType || '';
+            if (cm) cm.value = d.crownMaterial || '';
+
+            // Surfaces
+            var surfaces = (d.surfaces || '').split(',').map(s => s.trim());
+            document.querySelectorAll('.surface-check').forEach(c => {
+                c.checked = surfaces.includes(c.dataset.surface);
+            });
+            document.getElementById('surfacesInput').value = d.surfaces || '';
+
+            // Notes/Plan
+            document.getElementById('toothNotes').value = d.notes || '';
+            document.getElementById('toothPlan').value = d.plan || '';
+
+            toggleFillingRow();
+            document.getElementById('toothModal').classList.add('open');
+        });
+    });
+
+    function setCheck(name, val) {
+        var el = document.getElementById('chk_' + name);
+        if (el) el.checked = val;
+    }
+
+    function toggleFillingRow() {
+        var show = document.getElementById('chk_HasFilling')?.checked ||
+                   document.getElementById('chk_HasCrown')?.checked;
+        var row = document.getElementById('fillingTypeRow');
+        if (row) row.style.display = show ? 'grid' : 'none';
+    }
+
+    document.getElementById('chk_HasFilling')?.addEventListener('change', toggleFillingRow);
+    document.getElementById('chk_HasCrown')?.addEventListener('change', toggleFillingRow);
+
+    // Collect surface checkboxes into hidden input on submit
+    document.querySelectorAll('.surface-check').forEach(c => {
+        c.addEventListener('change', function() {
+            var selected = [];
+            document.querySelectorAll('.surface-check:checked').forEach(x => selected.push(x.dataset.surface));
+            document.getElementById('surfacesInput').value = selected.join(',');
+        });
+    });
+
+    // Style condition checkboxes on hover/check
+    document.querySelectorAll('.condition-check input').forEach(cb => {
+        cb.addEventListener('change', function() {
+            this.closest('.condition-check').style.borderColor = this.checked ? 'var(--primary)' : 'var(--border)';
+            this.closest('.condition-check').style.background = this.checked ? 'var(--primary-light)' : 'var(--bg-surface-2)';
+        });
+    });
+    })();
+    </script>
 }
 
 <!-- GP Record Tab -->

@@ -30,6 +30,9 @@ public static class DependencyInjection
                     case DatabaseProvider.MySql:
                         options.UseMySQL(connectionString, b => b.MigrationsAssembly("PatientCrm.Infrastructure"));
                         break;
+                    case DatabaseProvider.Sqlite:
+                        options.UseSqlite(connectionString, b => b.MigrationsAssembly("PatientCrm.Infrastructure"));
+                        break;
                     default:
                         options.UseSqlServer(connectionString, b => b.MigrationsAssembly("PatientCrm.Infrastructure"));
                         break;

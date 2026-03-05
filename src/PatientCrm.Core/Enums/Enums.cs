@@ -4,7 +4,8 @@ public enum DatabaseProvider
 {
     SqlServer,
     PostgreSql,
-    MySql
+    MySql,
+    Sqlite
 }
 
 public enum Gender
@@ -143,4 +144,15 @@ public enum AlertSeverity
     Medium,
     High,
     Critical
+}
+
+public enum ClientType
+{
+    GpPractice,
+    DentalPractice,
+    HospitalConsulting,
+    HealthCentre,
+    WalkInCentre,
+    MentalHealthService,
+    PhysiotherapyPractice
 }

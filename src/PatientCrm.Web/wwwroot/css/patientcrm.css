@@ -855,6 +855,13 @@ tbody td {
 .tooth.crown { background: #ede9fe; color: #6d28d9; }
 .tooth.root-canal { background: #fce7f3; color: #9d174d; }
 .tooth.implant { background: #dcfce7; color: #15803d; }
+/* Additional tooth states */
+.tooth-btn { border: none; cursor: pointer; outline: none; }
+.tooth-btn:hover { transform: scale(1.12); box-shadow: 0 2px 6px rgba(0,0,0,0.15); z-index: 2; position: relative; }
+.tooth.tooth-decay { background: #fee2e2; color: #b91c1c; border: 2px solid #ef4444; }
+.tooth.tooth-implant { background: #dcfce7; color: #15803d; border: 2px solid #22c55e; }
+.tooth.tooth-rct { background: #fce7f3; color: #9d174d; border: 2px solid #ec4899; }
+.tooth.tooth-bridge { background: #ede9fe; color: #6d28d9; border: 2px dashed #8b5cf6; }
 
 /* Pagination */
 .pagination {

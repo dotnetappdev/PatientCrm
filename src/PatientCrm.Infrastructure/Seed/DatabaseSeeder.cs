@@ -58,12 +58,14 @@ public static class DatabaseSeeder
                 Name = "Greenfield Medical Practice",
                 Slug = "greenfield-medical",
                 TenantType = TenantType.NhsEngland,
+                ClientType = ClientType.GpPractice,
                 OdsCode = "A81001",
                 Address = "1 High Street",
                 City = "Manchester",
                 Postcode = "M1 1AA",
                 PhoneNumber = "0161 000 0001",
                 Email = "admin@greenfield.nhs.uk",
+                ContactName = "Practice Manager",
                 IsActive = true
             },
             new()
@@ -72,12 +74,14 @@ public static class DatabaseSeeder
                 Name = "Belfast HSCNI Trust",
                 Slug = "belfast-hscni",
                 TenantType = TenantType.Hscni,
+                ClientType = ClientType.HospitalConsulting,
                 OdsCode = "ZT001",
                 Address = "10 Castle Street",
                 City = "Belfast",
                 Postcode = "BT1 1AA",
                 PhoneNumber = "028 0000 0001",
                 Email = "admin@belfast.hscni.net",
+                ContactName = "Trust Administrator",
                 IsActive = true
             },
             new()
@@ -86,12 +90,14 @@ public static class DatabaseSeeder
                 Name = "Smile Dental Care",
                 Slug = "smile-dental",
                 TenantType = TenantType.PrivatePractice,
+                ClientType = ClientType.DentalPractice,
                 OdsCode = "V00001",
                 Address = "25 Dental Row",
                 City = "London",
                 Postcode = "EC1A 1BB",
                 PhoneNumber = "020 0000 0001",
                 Email = "admin@smiledental.co.uk",
+                ContactName = "Practice Owner",
                 IsActive = true
             }
         };
