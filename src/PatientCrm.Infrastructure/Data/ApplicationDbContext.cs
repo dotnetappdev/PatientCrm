@@ -25,6 +25,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<GpRecord> GpRecords => Set<GpRecord>();
     public DbSet<Referral> Referrals => Set<Referral>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<UserCredential> UserCredentials => Set<UserCredential>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -192,6 +193,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         {
             e.HasIndex(a => a.EntityName);
             e.HasIndex(a => a.TenantId);
+        });
+
+        // UserCredential (FIDO2 / Passkeys)
+        builder.Entity<UserCredential>(e =>
+        {
+            e.HasIndex(c => c.CredentialId).IsUnique();
+            e.HasIndex(c => c.UserId);
+            e.Property(c => c.CredentialId).HasMaxLength(512).IsRequired();
+            e.HasOne(c => c.User)
+             .WithMany()
+             .HasForeignKey(c => c.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         // User - Tenant relationship

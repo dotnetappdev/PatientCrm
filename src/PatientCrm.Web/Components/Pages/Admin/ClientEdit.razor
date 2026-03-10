@@ -1,0 +1,134 @@
+@page "/admin/clients/{Id:guid}/edit"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin")]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Entities
+@using PatientCrm.Core.Enums
+@inject PatientApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>Edit Client - PatientCRM Admin</PageTitle>
+
+<div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+        <a href="/admin/clients" style="color: var(--text-muted); text-decoration: none;">← Clients</a>
+        <h1 class="page-title">Edit Client</h1>
+    </div>
+</div>
+
+@if (tenant == null)
+{
+    <div style="text-align: center; padding: 3rem; color: var(--text-muted);">Loading...</div>
+}
+else
+{
+    <div class="card" style="max-width: 800px;">
+        <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+                <label class="form-label">Organisation Name *</label>
+                <input class="form-control" @bind="tenant.Name" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Slug</label>
+                <input class="form-control" @bind="tenant.Slug" />
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Client Type</label>
+                <select class="form-control" @bind="tenant.ClientType">
+                    @foreach (var ct in Enum.GetValues<ClientType>())
+                    { <option value="@ct">@ct</option> }
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">NHS/HSCNI Type</label>
+                <select class="form-control" @bind="tenant.TenantType">
+                    @foreach (var tt in Enum.GetValues<TenantType>())
+                    { <option value="@tt">@tt</option> }
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">ODS Code</label>
+                <input class="form-control" @bind="tenant.OdsCode" />
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Contact Name</label>
+                <input class="form-control" @bind="tenant.ContactName" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" @bind="tenant.Email" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input class="form-control" @bind="tenant.PhoneNumber" />
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+                <label class="form-label">Address</label>
+                <input class="form-control" @bind="tenant.Address" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">City</label>
+                <input class="form-control" @bind="tenant.City" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Postcode</label>
+                <input class="form-control" @bind="tenant.Postcode" />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Website</label>
+            <input class="form-control" @bind="tenant.Website" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" rows="3" @bind="tenant.Notes"></textarea>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        { <div class="alert alert-danger">@errorMessage</div> }
+
+        <div class="d-flex gap-2" style="margin-top: 1.5rem;">
+            <a href="/admin/clients" class="btn btn-secondary">Cancel</a>
+            <button class="btn btn-primary" @onclick="Save" disabled="@saving">
+                @(saving ? "Saving..." : "Save Changes")
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private Tenant? tenant;
+    private bool saving;
+    private string? errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        tenant = await Api.GetTenantAsync(Id);
+    }
+
+    private async Task Save()
+    {
+        if (tenant == null) return;
+        saving = true;
+        var ok = await Api.UpdateTenantAsync(Id, tenant);
+        saving = false;
+        if (ok)
+        {
+            Notifications.SetSuccess("Client updated successfully.");
+            Nav.NavigateTo("/admin/clients");
+        }
+        else errorMessage = "Failed to save changes.";
+    }
+}

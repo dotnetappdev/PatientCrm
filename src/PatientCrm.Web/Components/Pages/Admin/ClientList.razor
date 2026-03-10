@@ -1,0 +1,128 @@
+@page "/admin/clients"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,TenantAdmin")]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Entities
+@using PatientCrm.Core.Enums
+@inject PatientApiClient Api
+@inject NotificationService Notifications
+
+<PageTitle>Clients - PatientCRM Admin</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Clients</h1>
+        <p class="page-subtitle">@tenants.Count organisations registered</p>
+    </div>
+    <a href="/admin/clients/create" class="btn btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Client
+    </a>
+</div>
+
+<div class="table-container">
+    <div class="table-header">
+        <div class="d-flex gap-2" style="flex: 1;">
+            <input type="text" @bind="searchText" @bind:event="oninput" @onkeydown="HandleKey"
+                   placeholder="Search by name, ODS code..." class="form-control" style="max-width: 300px;" />
+            <select class="form-control" style="max-width: 160px;" @bind="filterClientType" @bind:after="LoadTenants">
+                <option value="">All Types</option>
+                @foreach (var ct in Enum.GetValues<ClientType>())
+                { <option value="@ct">@ct</option> }
+            </select>
+            <button class="btn btn-secondary" @onclick="LoadTenants">Search</button>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div style="text-align: center; padding: 3rem; color: var(--text-muted);">Loading...</div>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>Organisation</th>
+                    <th>Client Type</th>
+                    <th>NHS/HSCNI</th>
+                    <th>ODS Code</th>
+                    <th>Location</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in tenants)
+                {
+                    <tr>
+                        <td>
+                            <div class="fw-600">@t.Name</div>
+                            <div class="patient-meta">@t.Email</div>
+                        </td>
+                        <td>
+                            @{
+                                var (cls, lbl) = t.ClientType switch
+                                {
+                                    ClientType.GpPractice => ("badge-teal", "🩺 GP"),
+                                    ClientType.DentalPractice => ("badge-amber", "🦷 Dental"),
+                                    ClientType.HospitalConsulting => ("badge-red", "🏨 Hospital"),
+                                    ClientType.HealthCentre => ("badge-blue", "🏥 Health Centre"),
+                                    _ => ("badge-gray", t.ClientType.ToString())
+                                };
+                            }
+                            <span class="badge @cls">@lbl</span>
+                        </td>
+                        <td>
+                            <span class="badge @(t.TenantType == TenantType.Hscni ? "badge-purple" : t.TenantType == TenantType.PrivatePractice ? "badge-amber" : "badge-blue")">@t.TenantType</span>
+                        </td>
+                        <td>@(t.OdsCode ?? "-")</td>
+                        <td>@t.City, @t.Postcode</td>
+                        <td>
+                            <span class="badge @(t.IsActive ? "badge-green" : "badge-gray")">@(t.IsActive ? "Active" : "Inactive")</span>
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <a href="/admin/clients/@t.Id/edit" class="btn btn-sm btn-secondary">Edit</a>
+                                <button class="btn btn-sm @(t.IsActive ? "btn-secondary" : "btn-primary")" @onclick="() => ToggleTenant(t.Id)">
+                                    @(t.IsActive ? "Disable" : "Enable")
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!tenants.Any())
+                {
+                    <tr><td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-muted);">No clients found.</td></tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<Tenant> tenants = [];
+    private string searchText = "";
+    private string filterClientType = "";
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadTenants();
+
+    private async Task LoadTenants()
+    {
+        loading = true;
+        tenants = await Api.GetTenantsAsync(searchText, filterClientType) ?? [];
+        loading = false;
+    }
+
+    private async Task HandleKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await LoadTenants();
+    }
+
+    private async Task ToggleTenant(Guid id)
+    {
+        var ok = await Api.ToggleTenantAsync(id);
+        if (ok) await LoadTenants();
+        else Notifications.SetError("Failed to toggle client status.");
+    }
+}
