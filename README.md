@@ -6,17 +6,57 @@ A modern, multi-tenant Patient Clinical Records Management System for NHS Englan
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Features](#features)
-4. [Technology Stack](#technology-stack)
-5. [Getting Started](#getting-started)
-6. [Configuration](#configuration)
-7. [Authentication and Security](#authentication-and-security)
-8. [User Roles](#user-roles)
-9. [API Reference](#api-reference)
-10. [Seed Data](#seed-data)
-11. [Deployment](#deployment)
+1. [Screenshots](#screenshots)
+2. [Overview](#overview)
+3. [Architecture](#architecture)
+4. [Features](#features)
+5. [Technology Stack](#technology-stack)
+6. [Getting Started](#getting-started)
+7. [Configuration](#configuration)
+8. [Authentication and Security](#authentication-and-security)
+9. [User Roles](#user-roles)
+10. [API Reference](#api-reference)
+11. [Seed Data](#seed-data)
+12. [Deployment](#deployment)
+
+---
+
+## Screenshots
+
+### Clinical Dashboard
+The main dashboard provides an at-a-glance overview of key metrics and upcoming clinical activity.
+
+![Dashboard](docs/screenshots/01_dashboard.png)
+
+### Patient Directory
+Searchable, paginated patient list with NHS/HSCNI number badges, blood group, region and status indicators.
+
+![Patient List](docs/screenshots/03_patient_list.png)
+
+### Patient Record
+Full patient record with tabs for Overview, Clinical Notes, Appointments, Prescriptions, Images/MRI and GP/Dental records. Active alerts and allergy warnings are prominently displayed.
+
+![Patient Details](docs/screenshots/04_patient_details.png)
+
+### Appointments
+Day-view appointment schedule with clinician, appointment type and status. Navigate by day with Previous / Today / Next controls.
+
+![Appointments](docs/screenshots/05_appointments.png)
+
+### Super Admin Dashboard
+Global administration overview showing tenant counts, user counts and a summary table of all client organisations.
+
+![Admin Dashboard](docs/screenshots/02_admin_dashboard.png)
+
+### Client Management
+Full list of NHS, HSCNI and private practice tenants with organisation type, ODS code, location and active status.
+
+![Admin Clients](docs/screenshots/06_admin_clients.png)
+
+### User Management
+System-wide user list with role badges (SuperAdmin, GP, Nurse, Dentist, Receptionist) and organisation assignment.
+
+![Admin Users](docs/screenshots/07_admin_users.png)
 
 ---
 
