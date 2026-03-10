@@ -1,0 +1,44 @@
+@model List<PatientCrm.Core.Entities.ApplicationUser>
+@{
+    ViewData["Title"] = "Manage Users";
+}
+
+<div class="page-header">
+    <div>
+        <a href="/Admin" style="color: var(--text-muted); text-decoration: none; font-size: 0.875rem;">← Admin</a>
+        <h1 class="page-title" style="margin-top: 0.25rem;">Users</h1>
+    </div>
+</div>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr><th>User</th><th>Email</th><th>Organisation</th><th>GMC/GDC No.</th><th>Last Login</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var user in Model)
+            {
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="patient-avatar" style="width: 36px; height: 36px; font-size: 0.75rem;">@(user.FirstName.Substring(0,1))@(user.LastName.Substring(0,1))</div>
+                            <div>
+                                <div class="fw-600">@user.FullName</div>
+                                <div class="patient-meta">@user.Title</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>@user.Email</td>
+                    <td>@(user.Tenant?.Name ?? "—")</td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(user.GmcNumber)) { <span class="badge badge-blue">GMC: @user.GmcNumber</span> }
+                        @if (!string.IsNullOrEmpty(user.GdcNumber)) { <span class="badge badge-teal">GDC: @user.GdcNumber</span> }
+                        @if (string.IsNullOrEmpty(user.GmcNumber) && string.IsNullOrEmpty(user.GdcNumber)) { <span class="text-muted">—</span> }
+                    </td>
+                    <td>@(user.LastLoginAt?.ToString("dd MMM yyyy HH:mm") ?? "Never")</td>
+                    <td><span class="badge @(user.IsActive ? "badge-green" : "badge-gray")">@(user.IsActive ? "Active" : "Inactive")</span></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
