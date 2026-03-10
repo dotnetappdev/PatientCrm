@@ -21,7 +21,7 @@
                 <tr>
                     <td>
                         <div class="d-flex align-items-center gap-2">
-                            <div class="patient-avatar" style="width: 36px; height: 36px; font-size: 0.75rem;">@(user.FirstName.Substring(0,1))@(user.LastName.Substring(0,1))</div>
+                            <div class="patient-avatar" style="width: 36px; height: 36px; font-size: 0.75rem;">@(user.FirstName?.Substring(0,1) ?? "?")@(user.LastName?.Substring(0,1) ?? "?")</div>
                             <div>
                                 <div class="fw-600">@user.FullName</div>
                                 <div class="patient-meta">@user.Title</div>
