@@ -40,5 +40,8 @@ public interface IUnitOfWork : IAsyncDisposable
     IRepository<PatientAlert> PatientAlerts { get; }
     IRepository<DentalRecord> DentalRecords { get; }
     IRepository<GpRecord> GpRecords { get; }
+    IRepository<Department> Departments { get; }
+    IRepository<Ward> Wards { get; }
+    IRepository<PatientAdmission> PatientAdmissions { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

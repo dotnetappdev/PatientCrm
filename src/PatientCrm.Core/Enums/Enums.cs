@@ -156,3 +156,51 @@ public enum ClientType
     MentalHealthService,
     PhysiotherapyPractice
 }
+
+public enum DepartmentType
+{
+    Cardiology,
+    Neurology,
+    Oncology,
+    Orthopaedics,
+    Emergency,
+    Maternity,
+    Psychiatry,
+    Renal,
+    Respiratory,
+    Gastroenterology,
+    Haematology,
+    Dermatology,
+    Rheumatology,
+    Endocrinology,
+    GeneralMedicine,
+    GeneralSurgery,
+    Urology,
+    Ophthalmology,
+    EarNoseThroat,
+    Paediatrics,
+    IntensiveCare,
+    Radiology,
+    Pathology,
+    PhysiotherapyRehab,
+    MaxillofacialSurgery
+}
+
+public enum AdmissionType
+{
+    Emergency,
+    Elective,
+    DayCase,
+    OutPatient,
+    Transfer
+}
+
+public enum AdmissionStatus
+{
+    Active,
+    Discharged,
+    OnLeave,
+    Transferred,
+    Deceased
+}
+

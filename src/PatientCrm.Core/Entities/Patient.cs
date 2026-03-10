@@ -73,6 +73,7 @@ public class Patient : BaseEntity
     public ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();
     public ICollection<MedicalImage> MedicalImages { get; set; } = new List<MedicalImage>();
     public ICollection<PatientAlert> Alerts { get; set; } = new List<PatientAlert>();
+    public ICollection<PatientAdmission> Admissions { get; set; } = new List<PatientAdmission>();
     public DentalRecord? DentalRecord { get; set; }
     public GpRecord? GpRecord { get; set; }
 }

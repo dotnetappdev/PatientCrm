@@ -1,0 +1,386 @@
+@page "/departments/{Id:guid}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Entities
+@using PatientCrm.Core.Enums
+@inject PatientApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>@(department?.Name ?? "Department") - PatientCRM</PageTitle>
+
+@if (loading)
+{
+    <div style="text-align: center; padding: 4rem; color: var(--text-muted);">Loading...</div>
+}
+else if (department == null)
+{
+    <div class="alert alert-danger">Department not found.</div>
+}
+else
+{
+    <div class="page-header">
+        <div class="d-flex align-items-center gap-3">
+            <a href="/departments" style="color:var(--text-muted);text-decoration:none;">&#8592; Departments</a>
+            <div>
+                <h1 class="page-title">@department.Name</h1>
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="badge badge-blue">@department.DepartmentType</span>
+                    <span class="badge @(department.IsActive ? "badge-green" : "badge-gray")">@(department.IsActive ? "Active" : "Inactive")</span>
+                    @if (!string.IsNullOrEmpty(department.Code)) { <span class="patient-meta">@department.Code</span> }
+                </div>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-secondary" @onclick="() => showEditDept = true">Edit Department</button>
+            <button class="btn btn-primary" @onclick="() => showAddWard = true">+ Add Ward</button>
+            <button class="btn btn-primary" @onclick="() => showAdmit = true">+ Admit Patient</button>
+        </div>
+    </div>
+
+    <!-- Department info cards -->
+    <div class="grid" style="grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="stat-card"><div class="stat-number">@activeAdmissions</div><div class="stat-label">Active Admissions</div></div>
+        <div class="stat-card"><div class="stat-number">@department.Wards.Count</div><div class="stat-label">Wards</div></div>
+        <div class="stat-card"><div class="stat-number">@department.Wards.Sum(w => w.BedCount)</div><div class="stat-label">Total Beds</div></div>
+        <div class="stat-card">
+            <div class="stat-number" style="font-size: 0.9rem;">@department.PhoneExtension</div>
+            <div class="stat-label">Extension</div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(department.Description))
+    {
+        <div class="card" style="margin-bottom: 1.5rem; padding: 1rem 1.25rem;">
+            <div style="font-size: 0.875rem; color: var(--text-secondary);">@department.Description</div>
+            @if (!string.IsNullOrEmpty(department.HeadOfDepartment))
+            { <div class="patient-meta" style="margin-top: 0.5rem;">Head: @department.HeadOfDepartment &nbsp;·&nbsp; @department.Location</div> }
+        </div>
+    }
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <a class="tab-item @(activeTab == "admissions" ? "active" : "")" @onclick='() => activeTab = "admissions"'>Active Admissions (@activeAdmissions)</a>
+        <a class="tab-item @(activeTab == "wards" ? "active" : "")" @onclick='() => activeTab = "wards"'>Wards (@department.Wards.Count)</a>
+        <a class="tab-item @(activeTab == "history" ? "active" : "")" @onclick='() => activeTab = "history"'>All Admissions</a>
+    </div>
+
+    <!-- Admissions tab -->
+    @if (activeTab == "admissions")
+    {
+        var active = admissions?.Where(a => a.Status == AdmissionStatus.Active).ToList() ?? new();
+        <div class="d-flex justify-between align-items-center" style="margin-bottom: 1rem;">
+            <p style="color: var(--text-muted); margin: 0; font-size: 0.875rem;">@active.Count patient(s) currently admitted</p>
+        </div>
+        <div class="table-container"><table>
+            <thead><tr><th>Patient</th><th>Ward / Bed</th><th>Admitted</th><th>Type</th><th>Reason</th><th>Consultant</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var adm in active)
+                {
+                    <tr>
+                        <td>
+                            <div class="fw-600">@adm.Patient?.FullName</div>
+                            <div class="patient-meta">@(adm.Patient?.NhsNumber ?? adm.Patient?.HscniNumber)</div>
+                        </td>
+                        <td>
+                            <div>@(adm.Ward?.Name ?? "Unassigned")</div>
+                            @if (!string.IsNullOrEmpty(adm.BedNumber))
+                            { <div class="patient-meta">Bed @adm.BedNumber</div> }
+                        </td>
+                        <td>
+                            <div>@adm.AdmissionDate.ToString("dd MMM yyyy")</div>
+                            @if (adm.ExpectedDischargeDate.HasValue)
+                            { <div class="patient-meta">EDD: @adm.ExpectedDischargeDate.Value.ToString("dd MMM")</div> }
+                        </td>
+                        <td><span class="badge @(adm.AdmissionType == AdmissionType.Emergency ? "badge-red" : "badge-blue")">@adm.AdmissionType</span></td>
+                        <td style="max-width: 200px; font-size: 0.8125rem;">@adm.AdmissionReason</td>
+                        <td style="font-size: 0.8125rem;">@(adm.Consultant?.FullName ?? "—")</td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <a href="/patients/@adm.PatientId" class="btn btn-sm btn-secondary">Patient</a>
+                                <button class="btn btn-sm btn-secondary" @onclick="() => OpenEditAdmission(adm)">Edit</button>
+                                <button class="btn btn-sm btn-primary" @onclick="() => DischargeAdm(adm)">Discharge</button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!active.Any())
+                { <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted);">No active admissions.</td></tr> }
+            </tbody>
+        </table></div>
+    }
+
+    <!-- Wards tab -->
+    @if (activeTab == "wards")
+    {
+        <div class="table-container"><table>
+            <thead><tr><th>Ward</th><th>Code</th><th>Beds</th><th>Location</th><th>Extension</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var ward in department.Wards.OrderBy(w => w.Name))
+                {
+                    <tr>
+                        <td><div class="fw-600">@ward.Name</div></td>
+                        <td>@ward.Code</td>
+                        <td>@ward.BedCount</td>
+                        <td>@ward.Location</td>
+                        <td>@ward.PhoneExtension</td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-sm btn-secondary" @onclick="() => OpenEditWard(ward)">Edit</button>
+                                <button class="btn btn-sm btn-secondary" style="color:var(--danger,#ef4444);" @onclick="() => DeleteWard(ward)">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!department.Wards.Any())
+                { <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">No wards configured.</td></tr> }
+            </tbody>
+        </table></div>
+    }
+
+    <!-- All admissions history -->
+    @if (activeTab == "history")
+    {
+        <div class="table-container"><table>
+            <thead><tr><th>Patient</th><th>Ward</th><th>Admitted</th><th>Discharged</th><th>Type</th><th>Status</th><th>Diagnosis</th></tr></thead>
+            <tbody>
+                @foreach (var adm in (admissions ?? new()).OrderByDescending(a => a.AdmissionDate))
+                {
+                    <tr>
+                        <td>
+                            <a href="/patients/@adm.PatientId" style="color: var(--primary); font-weight: 600;">@adm.Patient?.FullName</a>
+                        </td>
+                        <td>@(adm.Ward?.Name ?? "—")</td>
+                        <td>@adm.AdmissionDate.ToString("dd MMM yyyy")</td>
+                        <td>@(adm.DischargeDate.HasValue ? adm.DischargeDate.Value.ToString("dd MMM yyyy") : "—")</td>
+                        <td><span class="badge @(adm.AdmissionType == AdmissionType.Emergency ? "badge-red" : "badge-blue")">@adm.AdmissionType</span></td>
+                        <td><span class="badge @(adm.Status == AdmissionStatus.Active ? "badge-green" : "badge-gray")">@adm.Status</span></td>
+                        <td style="font-size: 0.8125rem;">@(adm.DiagnosisOnAdmission ?? adm.AdmissionReason)</td>
+                    </tr>
+                }
+                @if (!(admissions?.Any() ?? false))
+                { <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted);">No admissions recorded.</td></tr> }
+            </tbody>
+        </table></div>
+    }
+
+    <!-- Add Ward Modal -->
+    @if (showAddWard || editingWard != null)
+    {
+        var wModel = editingWard ?? newWard;
+        <div class="modal-backdrop open">
+            <div class="modal" style="max-width: 560px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">@(editingWard != null ? "Edit Ward" : "Add Ward")</h3>
+                    <button class="btn-icon" @onclick="() => { showAddWard = false; editingWard = null; }">&#x2715;</button>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label class="form-label">Ward Name *</label>
+                        <input class="form-control" @bind="wModel.Name" placeholder="e.g. Coronary Care Unit" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Code</label>
+                        <input class="form-control" @bind="wModel.Code" placeholder="CCU" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Bed Count</label>
+                        <input type="number" class="form-control" @bind="wModel.BedCount" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone Extension</label>
+                        <input class="form-control" @bind="wModel.PhoneExtension" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Location</label>
+                    <input class="form-control" @bind="wModel.Location" placeholder="Block A, Level 3 North" />
+                </div>
+                <div class="d-flex justify-between" style="margin-top:1rem;">
+                    <button class="btn btn-secondary" @onclick="() => { showAddWard = false; editingWard = null; }">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveWard">@(editingWard != null ? "Save Changes" : "Add Ward")</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Admit Patient Modal -->
+    @if (showAdmit || editingAdmission != null)
+    {
+        var aModel = editingAdmission ?? newAdmission;
+        <div class="modal-backdrop open">
+            <div class="modal" style="max-width: 680px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">@(editingAdmission != null ? "Edit Admission" : "Admit Patient")</h3>
+                    <button class="btn-icon" @onclick="() => { showAdmit = false; editingAdmission = null; admitError = null; }">&#x2715;</button>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label class="form-label">Patient NHS/HSCNI Number *</label>
+                        <input class="form-control" @bind="patientSearch" placeholder="Search by NHS number..." />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Admission Type *</label>
+                        <select class="form-control" @bind="aModel.AdmissionType">
+                            @foreach (var t in Enum.GetValues<AdmissionType>())
+                            { <option value="@t">@t</option> }
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Ward</label>
+                        <select class="form-control" @bind="aModel.WardId">
+                            <option value="">-- Unassigned --</option>
+                            @foreach (var w in department.Wards)
+                            { <option value="@w.Id">@w.Name</option> }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Bed Number</label>
+                        <input class="form-control" @bind="aModel.BedNumber" placeholder="e.g. CCU-4" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Admission Date</label>
+                        <input type="datetime-local" class="form-control" @bind="aModel.AdmissionDate" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Referring GP Name</label>
+                    <input class="form-control" @bind="aModel.ReferringGpName" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Admission Reason</label>
+                    <textarea class="form-control" rows="2" @bind="aModel.AdmissionReason"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Diagnosis on Admission</label>
+                    <textarea class="form-control" rows="2" @bind="aModel.DiagnosisOnAdmission"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Triage Notes</label>
+                    <textarea class="form-control" rows="2" @bind="aModel.TriageNotes"></textarea>
+                </div>
+                @if (!string.IsNullOrEmpty(admitError))
+                { <div class="alert alert-danger">@admitError</div> }
+                <div class="d-flex justify-between" style="margin-top:1rem;">
+                    <button class="btn btn-secondary" @onclick="() => { showAdmit = false; editingAdmission = null; admitError = null; }">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveAdmission">@(editingAdmission != null ? "Save Changes" : "Admit Patient")</button>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private Department? department;
+    private List<PatientAdmission>? admissions;
+    private bool loading = true;
+    private string activeTab = "admissions";
+
+    private bool showAddWard;
+    private Ward? editingWard;
+    private Ward newWard = new() { Name = "" };
+
+    private bool showAdmit;
+    private bool showEditDept;
+    private PatientAdmission? editingAdmission;
+    private PatientAdmission newAdmission = new() { AdmissionDate = DateTime.Now };
+    private string patientSearch = "";
+    private string? admitError;
+
+    private int activeAdmissions => admissions?.Count(a => a.Status == AdmissionStatus.Active) ?? 0;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        department = await Api.GetDepartmentAsync(Id);
+        admissions = await Api.GetPatientAdmissionsAsync(departmentId: Id);
+        loading = false;
+    }
+
+    private void OpenEditWard(Ward w)
+        => editingWard = new Ward { Id = w.Id, TenantId = w.TenantId, DepartmentId = w.DepartmentId, Name = w.Name, Code = w.Code, BedCount = w.BedCount, Location = w.Location, PhoneExtension = w.PhoneExtension, IsActive = w.IsActive };
+
+    private async Task SaveWard()
+    {
+        var model = editingWard ?? newWard;
+        if (string.IsNullOrWhiteSpace(model.Name)) return;
+        bool ok;
+        if (editingWard != null)
+            ok = await Api.UpdateWardAsync(editingWard.Id, editingWard);
+        else
+        {
+            var created = await Api.CreateWardAsync(Id, newWard);
+            ok = created != null;
+        }
+        showAddWard = false;
+        editingWard = null;
+        newWard = new Ward { Name = "" };
+        if (ok) { department = await Api.GetDepartmentAsync(Id); Notifications.SetSuccess("Ward saved."); }
+        else Notifications.SetError("Failed to save ward.");
+    }
+
+    private async Task DeleteWard(Ward w)
+    {
+        var ok = await Api.DeleteWardAsync(w.Id);
+        if (ok) { department = await Api.GetDepartmentAsync(Id); Notifications.SetSuccess("Ward removed."); }
+        else Notifications.SetError("Failed to remove ward.");
+    }
+
+    private void OpenEditAdmission(PatientAdmission adm)
+    {
+        editingAdmission = new PatientAdmission
+        {
+            Id = adm.Id, TenantId = adm.TenantId, PatientId = adm.PatientId, DepartmentId = adm.DepartmentId,
+            WardId = adm.WardId, ConsultantId = adm.ConsultantId, BedNumber = adm.BedNumber,
+            AdmissionType = adm.AdmissionType, Status = adm.Status, AdmissionDate = adm.AdmissionDate,
+            ExpectedDischargeDate = adm.ExpectedDischargeDate, AdmissionReason = adm.AdmissionReason,
+            DiagnosisOnAdmission = adm.DiagnosisOnAdmission, ReferringGpName = adm.ReferringGpName,
+            TriageNotes = adm.TriageNotes, TreatmentSummary = adm.TreatmentSummary
+        };
+        admitError = null;
+    }
+
+    private async Task SaveAdmission()
+    {
+        admitError = null;
+        if (editingAdmission != null)
+        {
+            var ok = await Api.UpdateAdmissionAsync(editingAdmission.Id, editingAdmission);
+            if (ok) { editingAdmission = null; admissions = await Api.GetPatientAdmissionsAsync(departmentId: Id); Notifications.SetSuccess("Admission updated."); }
+            else admitError = "Failed to update admission.";
+        }
+        else
+        {
+            newAdmission.DepartmentId = Id;
+            var created = await Api.CreateAdmissionAsync(newAdmission);
+            if (created != null)
+            {
+                showAdmit = false;
+                newAdmission = new PatientAdmission { AdmissionDate = DateTime.Now };
+                admissions = await Api.GetPatientAdmissionsAsync(departmentId: Id);
+                Notifications.SetSuccess("Patient admitted successfully.");
+            }
+            else admitError = "Failed to admit patient. Check patient ID is valid.";
+        }
+    }
+
+    private async Task DischargeAdm(PatientAdmission adm)
+    {
+        var ok = await Api.DischargePatientAsync(adm.Id, new PatientAdmission
+        {
+            Id = adm.Id, TenantId = adm.TenantId, PatientId = adm.PatientId, DepartmentId = adm.DepartmentId,
+            WardId = adm.WardId, ConsultantId = adm.ConsultantId, BedNumber = adm.BedNumber,
+            AdmissionType = adm.AdmissionType, AdmissionDate = adm.AdmissionDate,
+            AdmissionReason = adm.AdmissionReason, DiagnosisOnAdmission = adm.DiagnosisOnAdmission,
+            ReferringGpName = adm.ReferringGpName, TriageNotes = adm.TriageNotes
+        });
+        if (ok) { admissions = await Api.GetPatientAdmissionsAsync(departmentId: Id); Notifications.SetSuccess("Patient discharged."); }
+        else Notifications.SetError("Failed to discharge patient.");
+    }
+}

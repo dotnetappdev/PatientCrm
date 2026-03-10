@@ -26,6 +26,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<Referral> Referrals => Set<Referral>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<UserCredential> UserCredentials => Set<UserCredential>();
+    public DbSet<Department> Departments => Set<Department>();
+    public DbSet<Ward> Wards => Set<Ward>();
+    public DbSet<PatientAdmission> PatientAdmissions => Set<PatientAdmission>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -214,6 +217,55 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
              .WithMany(t => t.Users)
              .HasForeignKey(u => u.TenantId)
              .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Department
+        builder.Entity<Department>(e =>
+        {
+            e.HasIndex(d => d.TenantId);
+            e.HasQueryFilter(d => !d.IsDeleted);
+            e.Property(d => d.Name).HasMaxLength(200).IsRequired();
+            e.Property(d => d.Code).HasMaxLength(20);
+        });
+
+        // Ward
+        builder.Entity<Ward>(e =>
+        {
+            e.HasIndex(w => w.DepartmentId);
+            e.HasQueryFilter(w => !w.IsDeleted);
+            e.Property(w => w.Name).HasMaxLength(200).IsRequired();
+            e.Property(w => w.Code).HasMaxLength(20);
+            e.HasOne(w => w.Department)
+             .WithMany(d => d.Wards)
+             .HasForeignKey(w => w.DepartmentId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // PatientAdmission
+        builder.Entity<PatientAdmission>(e =>
+        {
+            e.HasIndex(a => a.PatientId);
+            e.HasIndex(a => a.DepartmentId);
+            e.HasIndex(a => a.TenantId);
+            e.HasQueryFilter(a => !a.IsDeleted);
+            e.HasOne(a => a.Patient)
+             .WithMany(p => p.Admissions)
+             .HasForeignKey(a => a.PatientId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(a => a.Department)
+             .WithMany(d => d.Admissions)
+             .HasForeignKey(a => a.DepartmentId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.Ward)
+             .WithMany(w => w.Admissions)
+             .HasForeignKey(a => a.WardId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(a => a.Consultant)
+             .WithMany()
+             .HasForeignKey(a => a.ConsultantId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

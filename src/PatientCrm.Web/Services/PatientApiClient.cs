@@ -290,6 +290,103 @@ public class PatientApiClient
         var response = await _http.PostAsync($"api/images?patientId={patientId}", content);
         return response.IsSuccessStatusCode;
     }
+
+    // Departments
+
+    public async Task<List<Department>?> GetDepartmentsAsync()
+    {
+        SetAuthHeader();
+        return await _http.GetFromJsonAsync<List<Department>>("api/departments");
+    }
+
+    public async Task<Department?> GetDepartmentAsync(Guid id)
+    {
+        SetAuthHeader();
+        return await _http.GetFromJsonAsync<Department>($"api/departments/{id}");
+    }
+
+    public async Task<Department?> CreateDepartmentAsync(Department department)
+    {
+        SetAuthHeader();
+        var response = await _http.PostAsJsonAsync("api/departments", department);
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadFromJsonAsync<Department>();
+    }
+
+    public async Task<bool> UpdateDepartmentAsync(Guid id, Department department)
+    {
+        SetAuthHeader();
+        var response = await _http.PutAsJsonAsync($"api/departments/{id}", department);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DeleteDepartmentAsync(Guid id)
+    {
+        SetAuthHeader();
+        var response = await _http.DeleteAsync($"api/departments/{id}");
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<List<Ward>?> GetWardsAsync(Guid departmentId)
+    {
+        SetAuthHeader();
+        return await _http.GetFromJsonAsync<List<Ward>>($"api/departments/{departmentId}/wards");
+    }
+
+    public async Task<Ward?> CreateWardAsync(Guid departmentId, Ward ward)
+    {
+        SetAuthHeader();
+        var response = await _http.PostAsJsonAsync($"api/departments/{departmentId}/wards", ward);
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadFromJsonAsync<Ward>();
+    }
+
+    public async Task<bool> UpdateWardAsync(Guid wardId, Ward ward)
+    {
+        SetAuthHeader();
+        var response = await _http.PutAsJsonAsync($"api/departments/wards/{wardId}", ward);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DeleteWardAsync(Guid wardId)
+    {
+        SetAuthHeader();
+        var response = await _http.DeleteAsync($"api/departments/wards/{wardId}");
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<List<PatientAdmission>?> GetPatientAdmissionsAsync(Guid? patientId = null, Guid? departmentId = null)
+    {
+        SetAuthHeader();
+        var url = "api/departments/admissions?";
+        if (patientId.HasValue) url += $"patientId={patientId}&";
+        if (departmentId.HasValue) url += $"departmentId={departmentId}";
+        return await _http.GetFromJsonAsync<List<PatientAdmission>>(url);
+    }
+
+    public async Task<PatientAdmission?> CreateAdmissionAsync(PatientAdmission admission)
+    {
+        SetAuthHeader();
+        var response = await _http.PostAsJsonAsync("api/departments/admissions", admission);
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadFromJsonAsync<PatientAdmission>();
+    }
+
+    public async Task<bool> UpdateAdmissionAsync(Guid id, PatientAdmission admission)
+    {
+        SetAuthHeader();
+        var response = await _http.PutAsJsonAsync($"api/departments/admissions/{id}", admission);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DischargePatientAsync(Guid admissionId, PatientAdmission admission)
+    {
+        SetAuthHeader();
+        admission.Status = PatientCrm.Core.Enums.AdmissionStatus.Discharged;
+        admission.DischargeDate ??= DateTime.UtcNow;
+        var response = await _http.PutAsJsonAsync($"api/departments/admissions/{admissionId}", admission);
+        return response.IsSuccessStatusCode;
+    }
 }
 
 // DTOs for API responses

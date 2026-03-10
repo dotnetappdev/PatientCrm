@@ -58,6 +58,21 @@ Prescribers can add new medications (or edit existing ones) from a modal on the 
 
 ![Add Medication Dialog](docs/screenshots/22_add_medication_dialog.png)
 
+### Hospital Departments
+Hospital departments management with card view showing specialty type badge, active admission counts, ward count, head of department and phone extension. Create, edit and delete departments from a modal. Belfast HSCNI Trust ships with 8 seeded departments (Cardiology, Neurology, Oncology, Orthopaedics, A&E, Renal, Respiratory, ICU).
+
+![Hospital Departments](docs/screenshots/23_departments.png)
+
+### Department Detail — Admissions & Wards
+Department detail view with active admissions table (ward/bed, admission type badge, expected discharge date, consultant), Wards tab, and All Admissions history. Discharge button marks the patient as discharged and records the date.
+
+![Department Detail](docs/screenshots/24_department_detail.png)
+
+### Patient Record — Hospital Admissions Tab
+New "Hospital Admissions" tab on the patient record shows all admissions with department, ward, admission/discharge dates, type badge, status and diagnosis. Links through to the department detail page.
+
+![Patient Admissions Tab](docs/screenshots/25_patient_admissions_tab.png)
+
 ### Appointments — Type Filter
 Day-view appointment schedule with Type and Status filter dropdowns. Filtering by In Person, Telephone or Video narrows the list instantly without a page reload.
 
@@ -176,12 +191,16 @@ The solution contains four projects:
 - Appointment scheduling with telephone, in-person and video types
 - Patient images and attachments (X-rays, reports, referral letters)
 - Patient alerts with severity levels (Critical, High, Medium, Low)
+- **Hospital departments** with ward management: 25 specialty types (Cardiology, Neurology, Oncology, Orthopaedics, A&E, ICU and more)
+- **Patient admissions**: assign patients to departments/wards with consultant, bed number, admission type, discharge dates and diagnosis tracking
+- Realistic seed data for Belfast HSCNI Trust with 8 hospital departments and 11 wards
 
 ### Administration
 
 - Super Admin and Tenant Admin roles with full RBAC
 - Multi-tenant client (practice) management
-- User management with role assignment
+- User management with role assignment (GP, Dentist, Consultant, Nurse, Receptionist, TenantAdmin, SuperAdmin)
+- SMTP email, SMS (Twilio / GOV.UK Notify / TextLocal) and video consultation settings
 - Audit logging for all record changes
 
 ### Security

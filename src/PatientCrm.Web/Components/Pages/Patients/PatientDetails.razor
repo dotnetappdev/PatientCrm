@@ -62,6 +62,7 @@ else
         <a class="tab-item @(activeTab == "notes" ? "active" : "")" href="#" @onclick="@(() => activeTab = "notes")" @onclick:preventDefault>Clinical Notes (@patient.ClinicalNotes.Count)</a>
         <a class="tab-item @(activeTab == "appointments" ? "active" : "")" href="#" @onclick="@(() => activeTab = "appointments")" @onclick:preventDefault>Appointments (@patient.Appointments.Count)</a>
         <a class="tab-item @(activeTab == "prescriptions" ? "active" : "")" href="#" @onclick="@(() => activeTab = "prescriptions")" @onclick:preventDefault>Prescriptions (@patient.Prescriptions.Count)</a>
+        <a class="tab-item @(activeTab == "admissions" ? "active" : "")" href="#" @onclick="@(() => activeTab = "admissions")" @onclick:preventDefault>Hospital Admissions (@patient.Admissions.Count)</a>
         <a class="tab-item @(activeTab == "images" ? "active" : "")" href="#" @onclick="@(() => activeTab = "images")" @onclick:preventDefault>Images &amp; MRI (@patient.MedicalImages.Count)</a>
         @if (patient.GpRecord != null)
         { <a class="tab-item @(activeTab == "gp" ? "active" : "")" href="#" @onclick="@(() => activeTab = "gp")" @onclick:preventDefault>GP Record</a> }
@@ -298,6 +299,68 @@ else
 
         @if (!string.IsNullOrEmpty(rxMessage))
         { <div class="alert @(rxMessageIsError ? "alert-danger" : "alert-success")" style="margin-top:1rem;">@rxMessage</div> }
+    }
+
+    <!-- Hospital Admissions Tab -->
+    @if (activeTab == "admissions")
+    {
+        @if (patient.Admissions.Any())
+        {
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Department</th>
+                            <th>Ward / Bed</th>
+                            <th>Admitted</th>
+                            <th>Discharged</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Diagnosis</th>
+                            <th>Consultant</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var adm in patient.Admissions.OrderByDescending(a => a.AdmissionDate))
+                        {
+                            <tr>
+                                <td>
+                                    <a href="/departments/@adm.DepartmentId" style="color: var(--primary); font-weight: 600;">@(adm.Department?.Name ?? "—")</a>
+                                    <div class="patient-meta">@adm.Department?.DepartmentType</div>
+                                </td>
+                                <td>
+                                    <div>@(adm.Ward?.Name ?? "Unassigned")</div>
+                                    @if (!string.IsNullOrEmpty(adm.BedNumber))
+                                    { <div class="patient-meta">Bed @adm.BedNumber</div> }
+                                </td>
+                                <td>@adm.AdmissionDate.ToString("dd MMM yyyy")</td>
+                                <td>@(adm.DischargeDate.HasValue ? adm.DischargeDate.Value.ToString("dd MMM yyyy") : "—")</td>
+                                <td>
+                                    <span class="badge @(adm.AdmissionType == PatientCrm.Core.Enums.AdmissionType.Emergency ? "badge-red" : "badge-blue")">@adm.AdmissionType</span>
+                                </td>
+                                <td>
+                                    <span class="badge @(adm.Status == PatientCrm.Core.Enums.AdmissionStatus.Active ? "badge-green" : "badge-gray")">@adm.Status</span>
+                                </td>
+                                <td style="font-size: 0.8125rem; max-width: 200px;">
+                                    @(adm.DiagnosisOnAdmission ?? adm.AdmissionReason)
+                                    @if (!string.IsNullOrEmpty(adm.DiagnosisOnDischarge))
+                                    { <div class="patient-meta">Discharge: @adm.DiagnosisOnDischarge</div> }
+                                </td>
+                                <td style="font-size: 0.8125rem;">@(adm.Consultant?.FullName ?? adm.ReferringGpName ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="card" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🏥</div>
+                <div>No hospital admissions recorded for this patient.</div>
+                <a href="/departments" class="btn btn-secondary btn-sm" style="margin-top: 1rem;">Go to Departments</a>
+            </div>
+        }
     }
 
     <!-- Images Tab -->
