@@ -25,7 +25,7 @@ A modern, multi-tenant Patient Clinical Records Management System for NHS Englan
 PatientCRM is a two-tier web application:
 
 - **PatientCrm.Api** - A RESTful API that owns all business logic, data access, identity management and security.
-- **PatientCrm.Web** - An MVC Razor web front-end that communicates exclusively with the API via `HttpClient`. The web app holds no direct database connection and contains no Entity Framework references.
+- **PatientCrm.Web** - A Blazor Web App (.NET 10) with Interactive Server rendering that communicates exclusively with the API via `HttpClient`. The web app holds no direct database connection and contains no Entity Framework references.
 
 This separation ensures the presentation layer is thin, testable and replaceable without touching the data layer.
 
@@ -34,11 +34,11 @@ This separation ensures the presentation layer is thin, testable and replaceable
 ## Architecture
 
 ```
-┌────────────────────────────────────────┐
-│          PatientCrm.Web (MVC)          │
-│  Cookie Auth + PatientApiClient        │
-│  Controllers call API via HttpClient   │
-└──────────────┬─────────────────────────┘
+┌────────────────────────────────────────────────────┐
+│          PatientCrm.Web (Blazor Web App)            │
+│  Interactive Server + Cookie Auth + TokenProvider   │
+│  Razor Components call API via PatientApiClient     │
+└──────────────┬─────────────────────────────────────┘
                │ HTTPS / JWT
 ┌──────────────▼─────────────────────────┐
 │          PatientCrm.Api (REST)         │
@@ -60,7 +60,7 @@ The solution contains four projects:
 | `PatientCrm.Core` | Domain entities, enums, interfaces |
 | `PatientCrm.Infrastructure` | EF Core DbContext, repositories, seed data |
 | `PatientCrm.Api` | REST API with Identity, 2FA, passkeys, JWT |
-| `PatientCrm.Web` | MVC Razor front-end, cookie auth, API client |
+| `PatientCrm.Web` | Blazor Web App (Interactive Server), cookie auth, API client |
 
 ---
 
@@ -104,7 +104,7 @@ The solution contains four projects:
 |-------|-----------|
 | Runtime | .NET 10 |
 | API Framework | ASP.NET Core Web API |
-| Web Framework | ASP.NET Core MVC (Razor Views) |
+| Web Framework | ASP.NET Core Blazor Web App (Interactive Server, .NET 10) |
 | ORM | Entity Framework Core 10 |
 | Database | SQL Server (LocalDB for development) |
 | Authentication | ASP.NET Core Identity |
