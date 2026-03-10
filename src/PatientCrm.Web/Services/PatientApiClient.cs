@@ -387,6 +387,21 @@ public class PatientApiClient
         var response = await _http.PutAsJsonAsync($"api/departments/admissions/{admissionId}", admission);
         return response.IsSuccessStatusCode;
     }
+
+    public async Task<bool> EnablePatientPortalAccessAsync(Guid patientId)
+    {
+        SetAuthHeader();
+        var response = await _http.PostAsync($"api/patients/{patientId}/portal-access", null);
+        return response.IsSuccessStatusCode;
+    }
+
+    // Patient portal — Patient role only
+
+    public async Task<Patient?> GetMyPortalRecordAsync()
+    {
+        SetAuthHeader();
+        return await _http.GetFromJsonAsync<Patient>("api/portal/me");
+    }
 }
 
 // DTOs for API responses

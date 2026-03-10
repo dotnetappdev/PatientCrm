@@ -289,7 +289,7 @@ else
     private bool showAdmit;
     private bool showEditDept;
     private PatientAdmission? editingAdmission;
-    private PatientAdmission newAdmission = new() { AdmissionDate = DateTime.Now };
+    private PatientAdmission newAdmission = new() { AdmissionDate = DateTime.UtcNow };
     private string patientSearch = "";
     private string? admitError;
 
@@ -362,7 +362,7 @@ else
             if (created != null)
             {
                 showAdmit = false;
-                newAdmission = new PatientAdmission { AdmissionDate = DateTime.Now };
+                newAdmission = new PatientAdmission { AdmissionDate = DateTime.UtcNow };
                 admissions = await Api.GetPatientAdmissionsAsync(departmentId: Id);
                 Notifications.SetSuccess("Patient admitted successfully.");
             }

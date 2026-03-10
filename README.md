@@ -73,6 +73,26 @@ New "Hospital Admissions" tab on the patient record shows all admissions with de
 
 ![Patient Admissions Tab](docs/screenshots/25_patient_admissions_tab.png)
 
+### Patient Portal — Dashboard
+Patients log in with the `Patient` role to see their personal health dashboard: upcoming appointments, active medications summary, key personal details and active allergy/alert banners. All clinical admin navigation is hidden; only My Health Record nav is shown.
+
+![Patient Portal Dashboard](docs/screenshots/26_patient_portal_dashboard.png)
+
+### Patient Portal — Medications & Repeat Prescriptions
+Patients can view their full prescription history with dosage, route, instructions, and repeats remaining. A **Request Repeat** button lets them submit a repeat prescription request directly (calls the existing reorder endpoint).
+
+![Patient Portal Prescriptions](docs/screenshots/27_patient_portal_prescriptions.png)
+
+### Patient Portal — Clinical Notes (Shared Only)
+Patients see their shared clinical notes. Confidential notes (mental health assessments, safeguarding, sensitive advisories) are never shown — a clear notice explains that some notes are kept private by the clinician.
+
+![Patient Portal Notes](docs/screenshots/28_patient_portal_notes.png)
+
+### Confidential Note — Clinician View
+When a GP, dentist or consultant creates or edits a clinical note, a clearly labelled **Confidential** checkbox marks the note private. Confidential notes show a 🔒 amber warning badge on the patient record and are stripped at the API layer before any patient-role response.
+
+![Confidential Note Badge](docs/screenshots/29_confidential_note_badge.png)
+
 ### Appointments — Type Filter
 Day-view appointment schedule with Type and Status filter dropdowns. Filtering by In Person, Telephone or Video narrows the list instantly without a page reload.
 
@@ -194,6 +214,17 @@ The solution contains four projects:
 - **Hospital departments** with ward management: 25 specialty types (Cardiology, Neurology, Oncology, Orthopaedics, A&E, ICU and more)
 - **Patient admissions**: assign patients to departments/wards with consultant, bed number, admission type, discharge dates and diagnosis tracking
 - Realistic seed data for Belfast HSCNI Trust with 8 hospital departments and 11 wards
+- **Confidential clinical notes**: GPs, dentists and consultants can mark notes as confidential (mental health, safeguarding, sensitive advisories) — these are never visible to the patient, with a clear 🔒 amber badge in the clinician UI
+
+### Patient Portal
+
+- Patients log in with the `Patient` role and see only their own data — a dedicated `/portal/*` area with a separate sidebar navigation
+- **My Dashboard**: upcoming appointments, active medications, stats, allergy banner, GP details
+- **My Appointments**: upcoming and past appointments with video call join links
+- **My Medications**: full prescription history, dosage, instructions, repeat count; one-click **Request Repeat** button
+- **My Notes**: non-confidential clinical notes only — a clear notice explains that some notes may be kept private by the clinician
+- **My Profile**: full personal details (NHS number, contact, GP registration, emergency contact, blood group, consent preferences) — read-only
+- Admin/GP can enable portal access per patient with a single click from the patient record (**🔗 Enable Portal Access** button) which creates an Identity account with the `Patient` role linked to the patient record
 
 ### Administration
 

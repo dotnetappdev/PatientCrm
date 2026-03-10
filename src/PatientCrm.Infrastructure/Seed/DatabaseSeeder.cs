@@ -20,12 +20,14 @@ public static class DatabaseSeeder
 
         await SeedPatientsAsync(context, tenants);
 
+        await SeedPatientPortalUsersAsync(context, userManager, tenants);
+
         await context.SaveChangesAsync();
     }
 
     private static async Task SeedRolesAsync(RoleManager<ApplicationRole> roleManager)
     {
-        string[] roles = ["SuperAdmin", "TenantAdmin", "GP", "Dentist", "Consultant", "Nurse", "Receptionist", "ReadOnly"];
+        string[] roles = ["SuperAdmin", "TenantAdmin", "GP", "Dentist", "Consultant", "Nurse", "Receptionist", "ReadOnly", "Patient"];
         foreach (var role in roles)
         {
             if (!await roleManager.RoleExistsAsync(role))
@@ -1059,6 +1061,51 @@ public static class DatabaseSeeder
         };
 
         context.PatientAdmissions.AddRange(admissions);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedPatientPortalUsersAsync(ApplicationDbContext context, UserManager<ApplicationUser> userManager, List<Tenant> tenants)
+    {
+        // Create demo patient portal accounts linked to existing patient records
+        var nhsTenant = tenants.First(t => t.TenantType == TenantType.NhsEngland && t.ClientType == ClientType.GpPractice);
+
+        var portalAccounts = new[]
+        {
+            // Development/demo portal accounts only — never use these credentials in production.
+            // In production, use a password-reset email flow to let patients set their own password.
+            (Email: "william.taylor@portal.nhs.uk",   Password: "Patient@2024!",
+             FirstName: "William", LastName: "Taylor",
+             PatientId: Guid.Parse("aaaaaaa1-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), TenantId: nhsTenant.Id),
+
+            (Email: "margaret.hughes@portal.nhs.uk",  Password: "Patient@2024!",
+             FirstName: "Margaret", LastName: "Hughes",
+             PatientId: Guid.Parse("aaaaaaa2-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), TenantId: nhsTenant.Id),
+        };
+
+        foreach (var pa in portalAccounts)
+        {
+            if (await userManager.FindByEmailAsync(pa.Email) != null) continue;
+
+            var user = new ApplicationUser
+            {
+                UserName = pa.Email, Email = pa.Email,
+                FirstName = pa.FirstName, LastName = pa.LastName, Title = "",
+                TenantId = pa.TenantId, EmailConfirmed = true, IsActive = true
+            };
+            var result = await userManager.CreateAsync(user, pa.Password);
+            if (!result.Succeeded) continue;
+
+            await userManager.AddToRoleAsync(user, "Patient");
+
+            // Link user to their patient record
+            var patient = await context.Patients.FindAsync(pa.PatientId);
+            if (patient != null)
+            {
+                patient.PatientUserId = user.Id;
+                context.Patients.Update(patient);
+            }
+        }
+
         await context.SaveChangesAsync();
     }
 }

@@ -58,12 +58,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             e.HasIndex(p => p.NhsNumber);
             e.HasIndex(p => p.HscniNumber);
             e.HasIndex(p => p.TenantId);
+            e.HasIndex(p => p.PatientUserId).IsUnique().HasFilter("[PatientUserId] IS NOT NULL");
             e.HasQueryFilter(p => !p.IsDeleted);
             e.Property(p => p.FirstName).HasMaxLength(100).IsRequired();
             e.Property(p => p.LastName).HasMaxLength(100).IsRequired();
             e.Property(p => p.NhsNumber).HasMaxLength(20);
             e.Property(p => p.HscniNumber).HasMaxLength(20);
             e.Property(p => p.Postcode).HasMaxLength(10);
+            e.HasOne(p => p.PatientUser)
+             .WithMany()
+             .HasForeignKey(p => p.PatientUserId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
         });
 
         // ClinicalNote

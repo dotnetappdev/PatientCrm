@@ -1,0 +1,162 @@
+@page "/portal"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Patient")]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Entities
+@using PatientCrm.Core.Enums
+@inject PatientApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>My Health Record - PatientCRM</PageTitle>
+
+@if (loading)
+{
+    <div style="text-align: center; padding: 4rem; color: var(--text-muted);">Loading your health record...</div>
+}
+else if (patient == null)
+{
+    <div class="alert alert-danger" style="margin: 2rem;">
+        <strong>No record linked.</strong> Your account is not yet linked to a patient record. Please contact your GP practice or clinic.
+    </div>
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Welcome, @patient.FirstName</h1>
+            <p style="color: var(--text-muted); margin: 0; font-size: 0.875rem;">Your personal health summary — @DateTime.Today.ToString("dddd, dd MMMM yyyy")</p>
+        </div>
+    </div>
+
+    <!-- Allergy alert -->
+    @if (!string.IsNullOrEmpty(patient.Allergies))
+    {
+        <div class="alert alert-danger">
+            <strong>⚠ Allergy Alert:</strong>&nbsp;@patient.Allergies
+        </div>
+    }
+
+    <!-- Active alert banners -->
+    @foreach (var alert in patient.Alerts.Where(a => a.IsActive))
+    {
+        <div class="alert @(alert.Severity == AlertSeverity.Critical ? "alert-danger" : "alert-warning")">
+            <strong>@alert.Severity:</strong> @alert.Title — @alert.Description
+        </div>
+    }
+
+    <!-- Summary stat cards -->
+    <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="stat-card">
+            <div class="stat-icon">📅</div>
+            <div class="stat-number">@upcomingAppts</div>
+            <div class="stat-label">Upcoming Appointments</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">💊</div>
+            <div class="stat-number">@activePrescriptions</div>
+            <div class="stat-label">Active Medications</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📋</div>
+            <div class="stat-number">@patient.ClinicalNotes.Count</div>
+            <div class="stat-label">Clinical Notes</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🏥</div>
+            <div class="stat-number">@patient.Admissions.Count</div>
+            <div class="stat-label">Hospital Admissions</div>
+        </div>
+    </div>
+
+    <div class="grid grid-2" style="gap: 1.5rem;">
+        <!-- Upcoming Appointments -->
+        <div class="card">
+            <div class="d-flex justify-between align-items-center" style="margin-bottom: 1rem;">
+                <h3 class="card-title">Upcoming Appointments</h3>
+                <a href="/portal/appointments" style="color: var(--primary); font-size: 0.875rem;">View all</a>
+            </div>
+            @if (upcoming.Any())
+            {
+                @foreach (var a in upcoming.Take(4))
+                {
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid var(--border);">
+                        <div>
+                            <div class="fw-600" style="font-size: 0.875rem;">@a.Title</div>
+                            <div class="patient-meta">@a.StartTime.ToString("dd MMM yyyy, HH:mm")</div>
+                        </div>
+                        <span class="badge badge-blue">@a.AppointmentType</span>
+                    </div>
+                }
+            }
+            else
+            { <p style="color: var(--text-muted); font-size: 0.875rem;">No upcoming appointments.</p> }
+        </div>
+
+        <!-- Active Medications -->
+        <div class="card">
+            <div class="d-flex justify-between align-items-center" style="margin-bottom: 1rem;">
+                <h3 class="card-title">Current Medications</h3>
+                <a href="/portal/prescriptions" style="color: var(--primary); font-size: 0.875rem;">View all</a>
+            </div>
+            @if (activeMeds.Any())
+            {
+                @foreach (var rx in activeMeds.Take(5))
+                {
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+                        <div>
+                            <div class="fw-600" style="font-size: 0.875rem;">@rx.MedicationName</div>
+                            <div class="patient-meta">@rx.Dosage — @rx.Frequency</div>
+                        </div>
+                        @if (rx.RepeatsRemaining > 0)
+                        { <span class="badge badge-green">@rx.RepeatsRemaining repeat(s)</span> }
+                        else
+                        { <span class="badge badge-gray">No repeats</span> }
+                    </div>
+                }
+            }
+            else
+            { <p style="color: var(--text-muted); font-size: 0.875rem;">No active medications.</p> }
+        </div>
+    </div>
+
+    <!-- Personal Details Summary -->
+    <div class="card" style="margin-top: 1.5rem;">
+        <div class="d-flex justify-between align-items-center" style="margin-bottom: 1rem;">
+            <h3 class="card-title">My Details</h3>
+            <a href="/portal/profile" style="color: var(--primary); font-size: 0.875rem;">View full profile</a>
+        </div>
+        <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.875rem;">
+            <div><div class="patient-meta">Date of Birth</div><div class="fw-600">@patient.DateOfBirth.ToString("dd MMMM yyyy")</div></div>
+            <div><div class="patient-meta">NHS Number</div><div class="fw-600">@(patient.NhsNumber ?? patient.HscniNumber ?? "—")</div></div>
+            <div><div class="patient-meta">Registered GP</div><div class="fw-600">@(patient.RegisteredGpName ?? "—")</div></div>
+            <div><div class="patient-meta">GP Practice</div><div class="fw-600">@(patient.RegisteredGpPractice ?? "—")</div></div>
+            <div><div class="patient-meta">Blood Group</div><div class="fw-600">@patient.BloodGroup</div></div>
+            <div><div class="patient-meta">Phone</div><div class="fw-600">@(patient.PhoneNumber ?? "—")</div></div>
+        </div>
+    </div>
+}
+
+@code {
+    private Patient? patient;
+    private bool loading = true;
+
+    private List<Appointment> upcoming = new();
+    private List<Prescription> activeMeds = new();
+    private int upcomingAppts;
+    private int activePrescriptions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        patient = await Api.GetMyPortalRecordAsync();
+        if (patient != null)
+        {
+            upcoming = patient.Appointments
+                .Where(a => a.StartTime >= DateTime.UtcNow && a.Status != AppointmentStatus.Cancelled)
+                .OrderBy(a => a.StartTime).ToList();
+            activeMeds = patient.Prescriptions
+                .Where(p => p.Status == PrescriptionStatus.Active).ToList();
+            upcomingAppts = upcoming.Count;
+            activePrescriptions = activeMeds.Count;
+        }
+        loading = false;
+    }
+}

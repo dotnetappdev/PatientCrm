@@ -54,6 +54,10 @@ public class Patient : BaseEntity
     public PatientStatus Status { get; set; } = PatientStatus.Active;
     public DateTime? DeceasedDate { get; set; }
 
+    // Patient Portal – linked identity user account (null = no portal access yet)
+    public Guid? PatientUserId { get; set; }
+    public ApplicationUser? PatientUser { get; set; }
+
     // Clinical
     public string? Allergies { get; set; }
     public string? CurrentMedications { get; set; }
