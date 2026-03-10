@@ -33,15 +33,25 @@ Searchable, paginated patient list with NHS/HSCNI number badges, blood group, re
 
 ![Patient List](docs/screenshots/03_patient_list.png)
 
-### Patient Record
+### Register Patient
+Multi-section registration form covering personal details, NHS/HSCNI identifiers, contact, address, allergies, medications, emergency contact and GP information.
+
+![Register Patient](docs/screenshots/08_patient_register.png)
+
+### Patient Record — Overview
 Full patient record with tabs for Overview, Clinical Notes, Appointments, Prescriptions, Images/MRI and GP/Dental records. Active alerts and allergy warnings are prominently displayed.
 
 ![Patient Details](docs/screenshots/04_patient_details.png)
 
-### Appointments
-Day-view appointment schedule with clinician, appointment type and status. Navigate by day with Previous / Today / Next controls.
+### Patient Record — Clinical Notes
+Chronological clinical notes with note type badges (Consultation, Prescription, Telephone, Results). Each note shows the date, clinician and full text.
 
-![Appointments](docs/screenshots/05_appointments.png)
+![Clinical Notes](docs/screenshots/11_patient_clinical_notes.png)
+
+### Appointments — Type Filter
+Day-view appointment schedule with Type and Status filter dropdowns. Filtering by In Person, Telephone or Video narrows the list instantly without a page reload.
+
+![Appointments Filtered](docs/screenshots/12_appointments_filtered.png)
 
 ### Super Admin Dashboard
 Global administration overview showing tenant counts, user counts and a summary table of all client organisations.
@@ -49,14 +59,24 @@ Global administration overview showing tenant counts, user counts and a summary 
 ![Admin Dashboard](docs/screenshots/02_admin_dashboard.png)
 
 ### Client Management
-Full list of NHS, HSCNI and private practice tenants with organisation type, ODS code, location and active status.
+Full list of NHS, HSCNI and private practice tenants with organisation type, ODS code, location, active status, search and pagination.
 
 ![Admin Clients](docs/screenshots/06_admin_clients.png)
 
-### User Management
-System-wide user list with role badges (SuperAdmin, GP, Nurse, Dentist, Receptionist) and organisation assignment.
+### Add Client
+Form for registering a new healthcare organisation with client type, NHS/HSCNI classification, ODS code, contact details and address.
 
-![Admin Users](docs/screenshots/07_admin_users.png)
+![Add Client](docs/screenshots/10_client_add.png)
+
+### Edit Client
+Pre-populated edit form for an existing client organisation.
+
+![Edit Client](docs/screenshots/09_client_edit.png)
+
+### User Management — Search & Filter
+System-wide user list with name/email search, Status filter (Active/Inactive) and 2FA filter, plus pagination.
+
+![Admin Users Filtered](docs/screenshots/13_users_filtered.png)
 
 ---
 
