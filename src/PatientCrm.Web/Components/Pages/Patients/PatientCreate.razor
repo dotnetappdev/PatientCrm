@@ -1,0 +1,185 @@
+@page "/patients/create"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Entities
+@using PatientCrm.Core.Enums
+@inject PatientApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>Register Patient - PatientCRM</PageTitle>
+
+<div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+        <a href="/patients" style="color: var(--text-muted); text-decoration: none;">← Patients</a>
+        <h1 class="page-title">Register New Patient</h1>
+    </div>
+</div>
+
+<div class="card" style="max-width: 900px;">
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">First Name *</label>
+            <input class="form-control" @bind="patient.FirstName" required />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Last Name *</label>
+            <input class="form-control" @bind="patient.LastName" required />
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Date of Birth *</label>
+            <input type="date" class="form-control" @bind="patient.DateOfBirth" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Gender</label>
+            <select class="form-control" @bind="patient.Gender">
+                @foreach (var g in Enum.GetValues<Gender>())
+                { <option value="@g">@g</option> }
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Blood Group</label>
+            <select class="form-control" @bind="patient.BloodGroup">
+                @foreach (var bg in Enum.GetValues<BloodGroup>())
+                { <option value="@bg">@bg</option> }
+            </select>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">NHS Number</label>
+            <input class="form-control" @bind="patient.NhsNumber" placeholder="999 999 9999" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">HSCNI Number</label>
+            <input class="form-control" @bind="patient.HscniNumber" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Region</label>
+            <select class="form-control" @bind="patient.Region">
+                @foreach (var r in Enum.GetValues<NhsRegion>())
+                { <option value="@r">@r</option> }
+            </select>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input class="form-control" @bind="patient.PhoneNumber" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Mobile</label>
+            <input class="form-control" @bind="patient.MobileNumber" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" @bind="patient.Email" />
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+            <label class="form-label">Address</label>
+            <input class="form-control" @bind="patient.AddressLine1" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">City</label>
+            <input class="form-control" @bind="patient.City" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Postcode</label>
+            <input class="form-control" @bind="patient.Postcode" />
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+            <label class="form-label">Allergies</label>
+            <input class="form-control" @bind="patient.Allergies" placeholder="List any known allergies..." />
+        </div>
+        <div class="form-group" style="flex: 2;">
+            <label class="form-label">Current Medications</label>
+            <input class="form-control" @bind="patient.CurrentMedications" />
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Emergency Contact Name</label>
+            <input class="form-control" @bind="patient.EmergencyContactName" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Relationship</label>
+            <input class="form-control" @bind="patient.EmergencyContactRelationship" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Emergency Phone</label>
+            <input class="form-control" @bind="patient.EmergencyContactPhone" />
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Registered GP</label>
+            <input class="form-control" @bind="patient.RegisteredGpName" placeholder="Dr. Smith" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">GP Practice</label>
+            <input class="form-control" @bind="patient.RegisteredGpPractice" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">ODS Code</label>
+            <input class="form-control" @bind="patient.RegisteredGpOdsCode" />
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    <div class="d-flex gap-2" style="margin-top: 1.5rem;">
+        <a href="/patients" class="btn btn-secondary">Cancel</a>
+        <button class="btn btn-primary" @onclick="CreatePatient" disabled="@saving">
+            @(saving ? "Saving..." : "Register Patient")
+        </button>
+    </div>
+</div>
+
+@code {
+    private Patient patient = new()
+    {
+        FirstName = "",
+        LastName = "",
+        DateOfBirth = DateTime.Today.AddYears(-40),
+        Status = PatientCrm.Core.Enums.PatientStatus.Active,
+        ConsentToTreatment = true,
+        Country = "United Kingdom"
+    };
+    private bool saving;
+    private string? errorMessage;
+
+    private async Task CreatePatient()
+    {
+        if (string.IsNullOrWhiteSpace(patient.FirstName) || string.IsNullOrWhiteSpace(patient.LastName))
+        {
+            errorMessage = "First name and last name are required.";
+            return;
+        }
+        saving = true;
+        errorMessage = null;
+        var result = await Api.CreatePatientAsync(patient);
+        saving = false;
+        if (result != null)
+        {
+            Notifications.SetSuccess($"Patient {result.FullName} registered successfully.");
+            Nav.NavigateTo($"/patients/{result.Id}");
+        }
+        else errorMessage = "Failed to register patient. Please check all fields and try again.";
+    }
+}

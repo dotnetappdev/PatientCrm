@@ -1,0 +1,122 @@
+@page "/admin"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,TenantAdmin")]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Enums
+@using Microsoft.AspNetCore.Components.Authorization
+@inject PatientApiClient Api
+
+<PageTitle>Administration - PatientCRM</PageTitle>
+
+<div class="page-header">
+    <div>
+        <AuthorizeView Roles="SuperAdmin">
+            <Authorized>
+                <h1 class="page-title">Super Admin Dashboard</h1>
+                <p class="page-subtitle">Global system administration</p>
+            </Authorized>
+            <NotAuthorized>
+                <h1 class="page-title">Admin Dashboard</h1>
+                <p class="page-subtitle">Manage your organisation</p>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+    <AuthorizeView Roles="SuperAdmin">
+        <Authorized>
+            <a href="/admin/clients/create" class="btn btn-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Client
+            </a>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+@if (stats != null)
+{
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-icon blue">🏥</div>
+            <div><div class="stat-value">@stats.TenantCount</div><div class="stat-label">Active Clients</div></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green">👤</div>
+            <div><div class="stat-value">@stats.UserCount</div><div class="stat-label">Active Users</div></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon purple">🧑‍⚕️</div>
+            <div><div class="stat-value">@stats.PatientCount</div><div class="stat-label">Total Patients</div></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon teal">🩺</div>
+            <div><div class="stat-value">@stats.GpCount</div><div class="stat-label">GP Practices</div></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon amber">🦷</div>
+            <div><div class="stat-value">@stats.DentalCount</div><div class="stat-label">Dental Practices</div></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon red">🏨</div>
+            <div><div class="stat-value">@stats.HospitalCount</div><div class="stat-label">Hospitals / Consultants</div></div>
+        </div>
+    </div>
+}
+
+<div class="d-flex gap-2" style="margin-bottom: 1.5rem; flex-wrap: wrap;">
+    <a href="/admin/clients" class="btn btn-secondary">Manage Clients</a>
+    <a href="/admin/users" class="btn btn-secondary">Manage Users</a>
+</div>
+
+@if (stats?.Tenants != null)
+{
+    <div class="table-container">
+        <div class="table-header">
+            <h3 class="card-title">Clients Overview</h3>
+            <a href="/admin/clients" class="btn btn-sm btn-secondary">View Full List</a>
+        </div>
+        <table>
+            <thead>
+                <tr><th>Organisation</th><th>Client Type</th><th>NHS/HSCNI Type</th><th>ODS Code</th><th>Location</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var tenant in stats.Tenants.Take(10))
+                {
+                    <tr>
+                        <td>
+                            <div class="fw-600">@tenant.Name</div>
+                            <div class="patient-meta">@tenant.Email</div>
+                        </td>
+                        <td>
+                            @{
+                                var (badge, label) = tenant.ClientType switch
+                                {
+                                    ClientType.GpPractice => ("badge-teal", "🩺 GP Practice"),
+                                    ClientType.DentalPractice => ("badge-amber", "🦷 Dental"),
+                                    ClientType.HospitalConsulting => ("badge-red", "🏨 Hospital"),
+                                    ClientType.HealthCentre => ("badge-blue", "🏥 Health Centre"),
+                                    _ => ("badge-gray", tenant.ClientType.ToString())
+                                };
+                            }
+                            <span class="badge @badge">@label</span>
+                        </td>
+                        <td>
+                            <span class="badge @(tenant.TenantType == TenantType.Hscni ? "badge-purple" : tenant.TenantType == TenantType.PrivatePractice ? "badge-amber" : "badge-blue")">
+                                @tenant.TenantType
+                            </span>
+                        </td>
+                        <td>@(tenant.OdsCode ?? "-")</td>
+                        <td>@tenant.City, @tenant.Postcode</td>
+                        <td><span class="badge @(tenant.IsActive ? "badge-green" : "badge-gray")">@(tenant.IsActive ? "Active" : "Inactive")</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private AdminStats? stats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        stats = await Api.GetAdminStatsAsync();
+    }
+}

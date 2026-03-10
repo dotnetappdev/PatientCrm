@@ -1,0 +1,107 @@
+@page "/appointments"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Entities
+@using PatientCrm.Core.Enums
+@inject PatientApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Appointments - PatientCRM</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Appointments</h1>
+        <p class="page-subtitle">@currentDate.ToString("dddd, dd MMMM yyyy")</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-secondary" @onclick="PreviousDay">← Previous</button>
+        <button class="btn btn-secondary" @onclick="GoToToday">Today</button>
+        <button class="btn btn-secondary" @onclick="NextDay">Next →</button>
+    </div>
+</div>
+
+<div class="table-container">
+    @if (loading)
+    {
+        <div style="text-align: center; padding: 3rem; color: var(--text-muted);">Loading appointments...</div>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Patient</th>
+                    <th>Reason</th>
+                    <th>Clinician</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var appt in appointments)
+                {
+                    <tr>
+                        <td>
+                            <div class="fw-600">@appt.StartTime.ToString("HH:mm")</div>
+                            <div class="patient-meta">@appt.DurationMinutes min</div>
+                        </td>
+                        <td>
+                            @if (appt.Patient != null)
+                            {
+                                <div class="patient-info">
+                                    <div class="patient-avatar" style="width: 32px; height: 32px; font-size: 0.7rem;">
+                                        @(appt.Patient.FirstName.Substring(0,1))@(appt.Patient.LastName.Substring(0,1))
+                                    </div>
+                                    <div>
+                                        <a href="/patients/@appt.Patient.Id" class="patient-name" style="text-decoration: none; color: var(--text-primary);">
+                                            @appt.Patient.FullName
+                                        </a>
+                                    </div>
+                                </div>
+                            }
+                        </td>
+                        <td>@(appt.Reason ?? appt.Title)</td>
+                        <td>@appt.Provider?.FullName</td>
+                        <td><span class="badge badge-blue">@appt.AppointmentType</span></td>
+                        <td>
+                            <span class="badge @(appt.Status == AppointmentStatus.Completed ? "badge-green" :
+                                                  appt.Status == AppointmentStatus.Cancelled ? "badge-red" :
+                                                  appt.Status == AppointmentStatus.DidNotAttend ? "badge-amber" : "badge-blue")">
+                                @appt.Status
+                            </span>
+                        </td>
+                    </tr>
+                }
+                @if (!appointments.Any())
+                {
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📅</div>
+                            No appointments scheduled for @currentDate.ToString("dd MMMM yyyy")
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private DateTime currentDate = DateTime.Today;
+    private List<Appointment> appointments = [];
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAppointments();
+
+    private async Task LoadAppointments()
+    {
+        loading = true;
+        appointments = await Api.GetAppointmentsAsync(currentDate) ?? [];
+        loading = false;
+    }
+
+    private async Task PreviousDay() { currentDate = currentDate.AddDays(-1); await LoadAppointments(); }
+    private async Task GoToToday() { currentDate = DateTime.Today; await LoadAppointments(); }
+    private async Task NextDay() { currentDate = currentDate.AddDays(1); await LoadAppointments(); }
+}

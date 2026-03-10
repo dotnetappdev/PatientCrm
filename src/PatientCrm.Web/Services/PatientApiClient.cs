@@ -8,20 +8,19 @@ namespace PatientCrm.Web.Services;
 public class PatientApiClient
 {
     private readonly HttpClient _http;
-    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly TokenProvider _tokenProvider;
 
-    public PatientApiClient(HttpClient http, IHttpContextAccessor httpContextAccessor)
+    public PatientApiClient(HttpClient http, TokenProvider tokenProvider)
     {
         _http = http;
-        _httpContextAccessor = httpContextAccessor;
+        _tokenProvider = tokenProvider;
     }
 
     // Attach the stored JWT to every outgoing request
     private void SetAuthHeader()
     {
-        var token = _httpContextAccessor.HttpContext?.User.FindFirst("api_token")?.Value;
-        if (!string.IsNullOrEmpty(token))
-            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        if (!string.IsNullOrEmpty(_tokenProvider.AccessToken))
+            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _tokenProvider.AccessToken);
         else
             _http.DefaultRequestHeaders.Authorization = null;
     }
@@ -168,13 +167,13 @@ public class PatientApiClient
         return await _http.GetFromJsonAsync<List<UserDto>>(url);
     }
 
-    // Image upload (multipart)
-    public async Task<bool> UploadImageAsync(Guid patientId, IFormFile file, string title, string imageType, string? description, Guid? clinicalNoteId)
+    // Image upload (multipart) – Blazor uses IBrowserFile
+    public async Task<bool> UploadImageAsync(Guid patientId, Microsoft.AspNetCore.Components.Forms.IBrowserFile file, string title, string imageType, string? description, Guid? clinicalNoteId)
     {
         SetAuthHeader();
         using var content = new MultipartFormDataContent();
-        using var stream = file.OpenReadStream();
-        content.Add(new StreamContent(stream), "file", file.FileName);
+        using var stream = file.OpenReadStream(maxAllowedSize: 104_857_600);
+        content.Add(new StreamContent(stream), "file", file.Name);
         content.Add(new StringContent(title), "title");
         content.Add(new StringContent(imageType), "imageType");
         if (!string.IsNullOrEmpty(description)) content.Add(new StringContent(description), "description");

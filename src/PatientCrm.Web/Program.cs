@@ -1,13 +1,20 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using PatientCrm.Web.Components;
 using PatientCrm.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// MVC
-builder.Services.AddControllersWithViews()
-    .AddJsonOptions(opts => opts.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles);
+// Blazor Web App with Interactive Server Components
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 
-// Cookie authentication (no direct Identity / EF Core)
+// MVC – kept solely for the AccountController (Login / Logout / 2FA / PasskeyCallback)
+// These actions need to call HttpContext.SignInAsync which requires the HTTP pipeline.
+builder.Services.AddControllersWithViews()
+    .AddJsonOptions(o => o.JsonSerializerOptions.ReferenceHandler =
+        System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles);
+
+// Cookie authentication (web layer – JWT stays in the API)
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -22,11 +29,17 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddCascadingAuthenticationState();
 
-// HttpContext accessor (needed by PatientApiClient)
+// HttpContext accessor (used only during SSR in AccountController / App.razor)
 builder.Services.AddHttpContextAccessor();
 
-// Session (stores partial 2FA state)
+// Scoped token provider – captures the JWT from the cookie claim during SSR
+// and makes it available throughout the Blazor Server circuit.
+builder.Services.AddScoped<TokenProvider>();
+builder.Services.AddScoped<NotificationService>();
+
+// Session (partial 2FA state)
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(opts =>
 {
@@ -35,13 +48,20 @@ builder.Services.AddSession(opts =>
     opts.Cookie.IsEssential = true;
 });
 
-// API client – all data access goes through the PatientCRM API
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
-    ?? "https://localhost:7001/";
-builder.Services.AddHttpClient<PatientApiClient>(client =>
+// API client – all data access goes through the PatientCRM REST API
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7001/";
+builder.Services.AddHttpClient("PatientApi", client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
     client.DefaultRequestHeaders.Add("Accept", "application/json");
+});
+// Register PatientApiClient as scoped so it can depend on the scoped TokenProvider
+builder.Services.AddScoped<PatientApiClient>(sp =>
+{
+    var factory = sp.GetRequiredService<IHttpClientFactory>();
+    var http = factory.CreateClient("PatientApi");
+    var tokenProvider = sp.GetRequiredService<TokenProvider>();
+    return new PatientApiClient(http, tokenProvider);
 });
 
 var app = builder.Build();
@@ -58,9 +78,15 @@ app.UseRouting();
 app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseAntiforgery();
 
+// MVC routes – handles /Account/* only
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+// Blazor routes – handles everything else
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
 
 app.Run();

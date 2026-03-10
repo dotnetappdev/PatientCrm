@@ -1,0 +1,92 @@
+@page "/admin/users"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,TenantAdmin")]
+@using PatientCrm.Web.Services
+@inject PatientApiClient Api
+
+<PageTitle>Users - PatientCRM Admin</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Users</h1>
+        <p class="page-subtitle">@users.Count registered users</p>
+    </div>
+</div>
+
+<div class="table-container">
+    @if (loading)
+    {
+        <div style="text-align: center; padding: 3rem; color: var(--text-muted);">Loading users...</div>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>GMC / GDC No.</th>
+                    <th>Organisation</th>
+                    <th>2FA</th>
+                    <th>Last Login</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in users)
+                {
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="patient-avatar" style="width: 36px; height: 36px; font-size: 0.75rem;">
+                                    @(user.FirstName?.Substring(0,1) ?? "?")@(user.LastName?.Substring(0,1) ?? "?")
+                                </div>
+                                <div>
+                                    <div class="fw-600">@user.FullName</div>
+                                    <div class="patient-meta">@user.Title | @user.Email</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(user.GmcNumber))
+                            { <span class="badge badge-blue">GMC @user.GmcNumber</span> }
+                            @if (!string.IsNullOrEmpty(user.GdcNumber))
+                            { <span class="badge badge-teal">GDC @user.GdcNumber</span> }
+                        </td>
+                        <td>@user.TenantName</td>
+                        <td>
+                            @if (user.TwoFactorEnabled)
+                            { <span class="badge badge-green">Enabled</span> }
+                            else
+                            { <span class="badge badge-gray">Disabled</span> }
+                        </td>
+                        <td>
+                            @if (user.LastLoginAt.HasValue)
+                            { <span>@user.LastLoginAt.Value.ToString("dd MMM yyyy HH:mm")</span> }
+                            else
+                            { <span class="text-muted">Never</span> }
+                        </td>
+                        <td>
+                            <span class="badge @(user.IsActive ? "badge-green" : "badge-gray")">
+                                @(user.IsActive ? "Active" : "Inactive")
+                            </span>
+                        </td>
+                    </tr>
+                }
+                @if (!users.Any())
+                {
+                    <tr><td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-muted);">No users found.</td></tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<UserDto> users = [];
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        users = await Api.GetUsersAsync(null) ?? [];
+        loading = false;
+    }
+}

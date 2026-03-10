@@ -1,0 +1,117 @@
+@page "/admin/clients/create"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin")]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Entities
+@using PatientCrm.Core.Enums
+@inject PatientApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>Add Client - PatientCRM Admin</PageTitle>
+
+<div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+        <a href="/admin/clients" style="color: var(--text-muted); text-decoration: none;">← Clients</a>
+        <h1 class="page-title">Add New Client</h1>
+    </div>
+</div>
+
+<div class="card" style="max-width: 800px;">
+    <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+            <label class="form-label">Organisation Name *</label>
+            <input class="form-control" @bind="tenant.Name" required />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Slug *</label>
+            <input class="form-control" @bind="tenant.Slug" placeholder="e.g. greenfield-medical" />
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Client Type</label>
+            <select class="form-control" @bind="tenant.ClientType">
+                @foreach (var ct in Enum.GetValues<ClientType>())
+                { <option value="@ct">@ct</option> }
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">NHS/HSCNI Type</label>
+            <select class="form-control" @bind="tenant.TenantType">
+                @foreach (var tt in Enum.GetValues<TenantType>())
+                { <option value="@tt">@tt</option> }
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">ODS Code</label>
+            <input class="form-control" @bind="tenant.OdsCode" />
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Contact Name</label>
+            <input class="form-control" @bind="tenant.ContactName" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" @bind="tenant.Email" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input class="form-control" @bind="tenant.PhoneNumber" />
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+            <label class="form-label">Address</label>
+            <input class="form-control" @bind="tenant.Address" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">City</label>
+            <input class="form-control" @bind="tenant.City" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Postcode</label>
+            <input class="form-control" @bind="tenant.Postcode" />
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" rows="3" @bind="tenant.Notes"></textarea>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    { <div class="alert alert-danger">@errorMessage</div> }
+
+    <div class="d-flex gap-2" style="margin-top: 1.5rem;">
+        <a href="/admin/clients" class="btn btn-secondary">Cancel</a>
+        <button class="btn btn-primary" @onclick="SaveClient" disabled="@saving">
+            @(saving ? "Saving..." : "Create Client")
+        </button>
+    </div>
+</div>
+
+@code {
+    private Tenant tenant = new() { Name = "", Slug = "", IsActive = true };
+    private bool saving;
+    private string? errorMessage;
+
+    private async Task SaveClient()
+    {
+        if (string.IsNullOrWhiteSpace(tenant.Name))
+        { errorMessage = "Organisation name is required."; return; }
+        saving = true;
+        var result = await Api.CreateTenantAsync(tenant);
+        saving = false;
+        if (result != null)
+        {
+            Notifications.SetSuccess($"Client '{result.Name}' created successfully.");
+            Nav.NavigateTo("/admin/clients");
+        }
+        else errorMessage = "Failed to create client.";
+    }
+}
