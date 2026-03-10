@@ -196,31 +196,108 @@ else
     <!-- Prescriptions Tab -->
     @if (activeTab == "prescriptions")
     {
+        var activeMeds = patient.Prescriptions.Where(p => p.Status == PatientCrm.Core.Enums.PrescriptionStatus.Active).ToList();
+        var controlledMeds = activeMeds.Where(p => p.IsControlledDrug).ToList();
+        <!-- Medication Summary Banner -->
+        @if (activeMeds.Any())
+        {
+            <div class="alert alert-info" style="margin-bottom: 1rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div>
+                    <strong>Current Medications:</strong>
+                    @string.Join(", ", activeMeds.Select(m => $"{m.MedicationName} {m.Dosage}"))
+                    @if (controlledMeds.Any())
+                    { <span class="badge badge-red" style="margin-left: 0.5rem;">@controlledMeds.Count Controlled Drug(s)</span> }
+                </div>
+            </div>
+        }
+
+        <div class="d-flex justify-between align-items-center" style="margin-bottom: 1rem;">
+            <div class="d-flex gap-2">
+                <select class="form-control" style="max-width:180px;" @bind="rxStatusFilter">
+                    <option value="">All Medications</option>
+                    <option value="Active">Active</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Discontinued</option>
+                    <option value="OnHold">On Hold</option>
+                </select>
+            </div>
+            <button class="btn btn-primary btn-sm" @onclick="() => showAddPrescription = true">+ Add Medication</button>
+        </div>
+
         <div class="table-container">
             <table>
                 <thead>
-                    <tr><th>Medication</th><th>Dosage</th><th>Frequency</th><th>Route</th><th>Date</th><th>Status</th></tr>
+                    <tr><th>Medication</th><th>Dosage / Freq</th><th>Repeats</th><th>Prescribed</th><th>Ends</th><th>Status</th><th></th></tr>
                 </thead>
                 <tbody>
-                    @foreach (var rx in patient.Prescriptions.OrderByDescending(p => p.PrescribedDate))
+                    @{
+                        var filteredRx = string.IsNullOrEmpty(rxStatusFilter)
+                            ? patient.Prescriptions.OrderByDescending(p => p.PrescribedDate).ToList()
+                            : patient.Prescriptions.Where(p => p.Status.ToString() == rxStatusFilter).OrderByDescending(p => p.PrescribedDate).ToList();
+                    }
+                    @foreach (var rx in filteredRx)
                     {
                         <tr>
                             <td>
-                                <div class="fw-600">@rx.MedicationName</div>
-                                <div class="patient-meta">@rx.GenericName</div>
+                                <div class="fw-600">@rx.MedicationName @if (rx.IsControlledDrug) { <span class="badge badge-red" style="font-size:0.65rem;">CD</span> }</div>
+                                <div class="patient-meta">@rx.GenericName | @rx.Route</div>
+                                @if (!string.IsNullOrEmpty(rx.Indication))
+                                { <div class="patient-meta">For: @rx.Indication</div> }
                             </td>
-                            <td>@rx.Dosage</td>
-                            <td>@rx.Frequency</td>
-                            <td>@rx.Route</td>
+                            <td>
+                                <div>@rx.Dosage</div>
+                                <div class="patient-meta">@rx.Frequency</div>
+                                @if (rx.QuantityIssued.HasValue)
+                                { <div class="patient-meta">Qty: @rx.QuantityIssued @rx.Unit</div> }
+                            </td>
+                            <td>
+                                @if (rx.RepeatsRemaining.HasValue)
+                                {
+                                    <span class="badge @(rx.RepeatsRemaining > 0 ? "badge-green" : "badge-red")">
+                                        @rx.RepeatsRemaining / @rx.Repeats remaining
+                                    </span>
+                                }
+                                else { <span class="patient-meta">—</span> }
+                            </td>
                             <td>@rx.PrescribedDate.ToString("dd MMM yyyy")</td>
-                            <td><span class="badge @(rx.Status == PatientCrm.Core.Enums.PrescriptionStatus.Active ? "badge-green" : "badge-gray")">@rx.Status</span></td>
+                            <td>
+                                @if (rx.EndDate.HasValue)
+                                { @rx.EndDate.Value.ToString("dd MMM yyyy") }
+                                else { <span class="patient-meta">Ongoing</span> }
+                            </td>
+                            <td>
+                                <span class="badge @(rx.Status == PatientCrm.Core.Enums.PrescriptionStatus.Active ? "badge-green" : rx.Status == PatientCrm.Core.Enums.PrescriptionStatus.Cancelled ? "badge-red" : "badge-gray")">
+                                    @(rx.Status == PatientCrm.Core.Enums.PrescriptionStatus.Cancelled ? "Discontinued" : rx.Status.ToString())
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    @if (rx.Status == PatientCrm.Core.Enums.PrescriptionStatus.Active)
+                                    {
+                                        <button class="btn btn-sm btn-primary" @onclick="() => RequestReorder(rx)"
+                                                title="@(rx.RepeatsRemaining.HasValue && rx.RepeatsRemaining <= 0 ? "No repeats remaining" : "Reorder this prescription")">
+                                            ↺ Reorder
+                                        </button>
+                                        <button class="btn btn-sm btn-secondary" @onclick="() => OpenEditPrescription(rx)">Edit</button>
+                                        <button class="btn btn-sm btn-secondary" style="color:var(--danger,#ef4444);" @onclick="() => DiscontinueRx(rx)">Stop</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-secondary" @onclick="() => OpenEditPrescription(rx)">View</button>
+                                    }
+                                </div>
+                            </td>
                         </tr>
                     }
-                    @if (!patient.Prescriptions.Any())
-                    { <tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">No prescriptions recorded.</td></tr> }
+                    @if (!filteredRx.Any())
+                    { <tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">No prescriptions recorded.</td></tr> }
                 </tbody>
             </table>
         </div>
+
+        @if (!string.IsNullOrEmpty(rxMessage))
+        { <div class="alert @(rxMessageIsError ? "alert-danger" : "alert-success")" style="margin-top:1rem;">@rxMessage</div> }
     }
 
     <!-- Images Tab -->
@@ -381,6 +458,123 @@ else
             </div>
         </div>
     }
+
+    <!-- Add / Edit Prescription Modal -->
+    @if (showAddPrescription || editingPrescription != null)
+    {
+        var isEdit = editingPrescription != null;
+        var rx = isEdit ? editingPrescription! : newPrescription;
+        <div class="modal-backdrop open">
+            <div class="modal" style="max-width: 760px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">@(isEdit ? "Edit Prescription" : "Add Medication")</h3>
+                    <button class="btn-icon" @onclick="() => { showAddPrescription = false; editingPrescription = null; rxFormError = null; }">&#x2715;</button>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label class="form-label">Medication Name *</label>
+                        <input class="form-control" @bind="rx.MedicationName" placeholder="e.g. Atorvastatin" />
+                    </div>
+                    <div class="form-group" style="flex: 2;">
+                        <label class="form-label">Generic Name</label>
+                        <input class="form-control" @bind="rx.GenericName" placeholder="Generic / BNF name" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Dosage *</label>
+                        <input class="form-control" @bind="rx.Dosage" placeholder="e.g. 40mg" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Frequency *</label>
+                        <input class="form-control" @bind="rx.Frequency" placeholder="e.g. Once daily" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Route *</label>
+                        <select class="form-control" @bind="rx.Route">
+                            <option value="Oral">Oral</option>
+                            <option value="Topical">Topical</option>
+                            <option value="Intravenous">Intravenous</option>
+                            <option value="Intramuscular">Intramuscular</option>
+                            <option value="Subcutaneous">Subcutaneous</option>
+                            <option value="Inhaled">Inhaled</option>
+                            <option value="Nasal">Nasal</option>
+                            <option value="Rectal">Rectal</option>
+                            <option value="Sublingual">Sublingual</option>
+                            <option value="Ophthalmic">Ophthalmic</option>
+                            <option value="Otic">Otic</option>
+                            <option value="Patch">Transdermal Patch</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" class="form-control" @bind="rx.QuantityIssued" placeholder="28" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Unit</label>
+                        <input class="form-control" @bind="rx.Unit" placeholder="tablets, ml, puffs..." />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Repeats Authorised</label>
+                        <input type="number" class="form-control" @bind="rx.Repeats" placeholder="6" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Repeats Remaining</label>
+                        <input type="number" class="form-control" @bind="rx.RepeatsRemaining" placeholder="6" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" class="form-control" @bind="rx.StartDate" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">End Date</label>
+                        <input type="date" class="form-control" @bind="rx.EndDate" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select class="form-control" @bind="rx.Status">
+                            @foreach (var s in Enum.GetValues<PatientCrm.Core.Enums.PrescriptionStatus>())
+                            { <option value="@s">@s</option> }
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Indication</label>
+                    <input class="form-control" @bind="rx.Indication" placeholder="Reason for prescribing..." />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Instructions for Patient</label>
+                    <textarea class="form-control" rows="2" @bind="rx.Instructions" placeholder="Take with food, avoid grapefruit..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">SNOMED Code</label>
+                        <input class="form-control" @bind="rx.SnomedCode" placeholder="e.g. 372912004" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">dm+d Code</label>
+                        <input class="form-control" @bind="rx.DmdCode" placeholder="NHS dm+d VMPP code" />
+                    </div>
+                    <div class="form-group" style="flex: 0; min-width: 160px; display: flex; align-items: flex-end; padding-bottom: 0.25rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" @bind="rx.IsControlledDrug" />
+                            Controlled Drug (CD)
+                        </label>
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(rxFormError))
+                { <div class="alert alert-danger">@rxFormError</div> }
+                <div class="d-flex justify-between" style="margin-top: 1rem;">
+                    <button class="btn btn-secondary" @onclick="() => { showAddPrescription = false; editingPrescription = null; rxFormError = null; }">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SavePrescription">@(isEdit ? "Save Changes" : "Add Prescription")</button>
+                </div>
+            </div>
+        </div>
+    }
 }
 
 @code {
@@ -400,6 +594,18 @@ else
     private string uploadImageType = "Xray";
     private string? uploadDescription;
     private Microsoft.AspNetCore.Components.Forms.IBrowserFile? uploadFile;
+
+    // Prescription state
+    private bool showAddPrescription;
+    private Prescription? editingPrescription;
+    private Prescription newPrescription = NewBlankPrescription();
+    private string rxStatusFilter = "";
+    private string? rxMessage;
+    private bool rxMessageIsError;
+    private string? rxFormError;
+
+    private static Prescription NewBlankPrescription() =>
+        new() { MedicationName = "", Dosage = "", Frequency = "", Route = "Oral" };
 
     protected override async Task OnParametersSetAsync()
     {
@@ -436,5 +642,95 @@ else
             patient = await Api.GetPatientAsync(Id);
         }
         else Notifications.SetError("Failed to upload image.");
+    }
+
+    private void OpenEditPrescription(Prescription rx)
+    {
+        editingPrescription = new Prescription
+        {
+            Id = rx.Id, TenantId = rx.TenantId, PatientId = rx.PatientId, PrescriberId = rx.PrescriberId,
+            MedicationName = rx.MedicationName, GenericName = rx.GenericName,
+            Dosage = rx.Dosage, Frequency = rx.Frequency, Route = rx.Route,
+            Instructions = rx.Instructions, QuantityIssued = rx.QuantityIssued, Unit = rx.Unit,
+            Repeats = rx.Repeats, RepeatsRemaining = rx.RepeatsRemaining,
+            PrescribedDate = rx.PrescribedDate, StartDate = rx.StartDate, EndDate = rx.EndDate,
+            Status = rx.Status, SnomedCode = rx.SnomedCode, DmdCode = rx.DmdCode,
+            IsControlledDrug = rx.IsControlledDrug, Indication = rx.Indication,
+            SideEffectsNoted = rx.SideEffectsNoted
+        };
+        rxFormError = null;
+    }
+
+    private async Task SavePrescription()
+    {
+        var rx = editingPrescription ?? newPrescription;
+        if (string.IsNullOrWhiteSpace(rx.MedicationName) || string.IsNullOrWhiteSpace(rx.Dosage) ||
+            string.IsNullOrWhiteSpace(rx.Frequency) || string.IsNullOrWhiteSpace(rx.Route))
+        {
+            rxFormError = "Medication name, dosage, frequency and route are required.";
+            return;
+        }
+        rxFormError = null;
+
+        bool ok;
+        if (editingPrescription != null)
+        {
+            ok = await Api.UpdatePrescriptionAsync(editingPrescription.Id, editingPrescription);
+        }
+        else
+        {
+            newPrescription.PatientId = Id;
+            var created = await Api.CreatePrescriptionAsync(newPrescription);
+            ok = created != null;
+        }
+
+        if (ok)
+        {
+            Notifications.SetSuccess(editingPrescription != null ? "Prescription updated." : "Prescription added.");
+            showAddPrescription = false;
+            editingPrescription = null;
+            newPrescription = NewBlankPrescription();
+            patient = await Api.GetPatientAsync(Id);
+        }
+        else rxFormError = "Failed to save prescription. Please try again.";
+    }
+
+    private async Task RequestReorder(Prescription rx)
+    {
+        rxMessage = null;
+        var (ok, error) = await Api.ReorderPrescriptionAsync(rx.Id);
+        if (ok)
+        {
+            rxMessageIsError = false;
+            rxMessage = $"Repeat request submitted for {rx.MedicationName}. Your prescription will be ready for collection within 2 working days.";
+            patient = await Api.GetPatientAsync(Id);
+        }
+        else
+        {
+            rxMessageIsError = true;
+            rxMessage = error ?? "Unable to reorder this prescription.";
+        }
+    }
+
+    private async Task DiscontinueRx(Prescription rx)
+    {
+        var copy = new Prescription
+        {
+            Id = rx.Id, TenantId = rx.TenantId, PatientId = rx.PatientId, PrescriberId = rx.PrescriberId,
+            MedicationName = rx.MedicationName, GenericName = rx.GenericName,
+            Dosage = rx.Dosage, Frequency = rx.Frequency, Route = rx.Route,
+            Instructions = rx.Instructions, QuantityIssued = rx.QuantityIssued, Unit = rx.Unit,
+            Repeats = rx.Repeats, RepeatsRemaining = rx.RepeatsRemaining,
+            PrescribedDate = rx.PrescribedDate, StartDate = rx.StartDate, EndDate = rx.EndDate,
+            SnomedCode = rx.SnomedCode, DmdCode = rx.DmdCode, IsControlledDrug = rx.IsControlledDrug,
+            Indication = rx.Indication, SideEffectsNoted = rx.SideEffectsNoted
+        };
+        var ok = await Api.DiscontinuePrescriptionAsync(rx.Id, copy);
+        if (ok)
+        {
+            Notifications.SetSuccess($"{rx.MedicationName} has been discontinued.");
+            patient = await Api.GetPatientAsync(Id);
+        }
+        else Notifications.SetError("Failed to discontinue prescription.");
     }
 }

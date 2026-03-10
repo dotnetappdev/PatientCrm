@@ -60,4 +60,52 @@ public class PrescriptionsController : ControllerBase
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
+
+    [HttpPost("{id:guid}/reorder")]
+    [Authorize(Roles = "SuperAdmin,TenantAdmin,GP,Dentist,Consultant,Nurse,Patient")]
+    public async Task<IActionResult> ReorderPrescription(Guid id, CancellationToken cancellationToken)
+    {
+        var existing = await _unitOfWork.Prescriptions.GetByIdAsync(id, cancellationToken);
+        if (existing == null) return NotFound();
+        if (existing.Status != PatientCrm.Core.Enums.PrescriptionStatus.Active)
+            return BadRequest("Only active prescriptions can be reordered.");
+        if (existing.RepeatsRemaining.HasValue && existing.RepeatsRemaining <= 0)
+            return BadRequest("No repeats remaining on this prescription. Please contact your prescriber.");
+
+        // Create a new prescription as a reorder copy
+        var reorder = new Prescription
+        {
+            PatientId = existing.PatientId,
+            PrescriberId = existing.PrescriberId,
+            MedicationName = existing.MedicationName,
+            GenericName = existing.GenericName,
+            Dosage = existing.Dosage,
+            Frequency = existing.Frequency,
+            Route = existing.Route,
+            Instructions = existing.Instructions,
+            QuantityIssued = existing.QuantityIssued,
+            Unit = existing.Unit,
+            Repeats = existing.Repeats,
+            RepeatsRemaining = existing.RepeatsRemaining.HasValue ? existing.RepeatsRemaining - 1 : null,
+            SnomedCode = existing.SnomedCode,
+            DmdCode = existing.DmdCode,
+            IsControlledDrug = existing.IsControlledDrug,
+            Indication = existing.Indication,
+            PrescribedDate = DateTime.UtcNow,
+            StartDate = DateTime.UtcNow,
+            Status = PatientCrm.Core.Enums.PrescriptionStatus.Active,
+            TenantId = existing.TenantId
+        };
+
+        // Decrement repeats on the original
+        if (existing.RepeatsRemaining.HasValue)
+        {
+            existing.RepeatsRemaining -= 1;
+            await _unitOfWork.Prescriptions.UpdateAsync(existing, cancellationToken);
+        }
+
+        await _unitOfWork.Prescriptions.AddAsync(reorder, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return CreatedAtAction(nameof(GetPrescription), new { id = reorder.Id }, reorder);
+    }
 }

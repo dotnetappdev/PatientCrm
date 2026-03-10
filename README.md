@@ -48,6 +48,16 @@ Chronological clinical notes with note type badges (Consultation, Prescription, 
 
 ![Clinical Notes](docs/screenshots/11_patient_clinical_notes.png)
 
+### Patient Record — Prescriptions & Medication History
+Full prescription/medication history with active medication summary banner, status filter, controlled drug badges, repeat count display, and per-row **Reorder**, **Edit** and **Stop** actions. Patients and clinicians can request a repeat with one click.
+
+![Patient Prescriptions](docs/screenshots/21_patient_prescriptions.png)
+
+### Add / Edit Medication Dialog
+Prescribers can add new medications (or edit existing ones) from a modal on the patient record, specifying dosage, frequency, route, quantity, repeats authorised, SNOMED/dm+d codes, indication, patient instructions, and controlled drug flag.
+
+![Add Medication Dialog](docs/screenshots/22_add_medication_dialog.png)
+
 ### Appointments — Type Filter
 Day-view appointment schedule with Type and Status filter dropdowns. Filtering by In Person, Telephone or Video narrows the list instantly without a page reload.
 
@@ -162,7 +172,7 @@ The solution contains four projects:
 - GP Records with QOF registers (diabetes, hypertension, AF, asthma, COPD, mental health)
 - Dental Records with charting, BPE scores and treatment history
 - Clinical notes using SOAP format with SNOMED CT coding
-- Prescription management with repeat prescription support
+- Prescription management with repeat prescription support and one-click reorder (with repeat count tracking)
 - Appointment scheduling with telephone, in-person and video types
 - Patient images and attachments (X-rays, reports, referral letters)
 - Patient alerts with severity levels (Critical, High, Medium, Low)

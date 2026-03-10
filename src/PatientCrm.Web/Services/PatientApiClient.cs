@@ -258,6 +258,23 @@ public class PatientApiClient
         return response.IsSuccessStatusCode;
     }
 
+    public async Task<(bool Ok, string? Error)> ReorderPrescriptionAsync(Guid id)
+    {
+        SetAuthHeader();
+        var response = await _http.PostAsync($"api/prescriptions/{id}/reorder", null);
+        if (response.IsSuccessStatusCode) return (true, null);
+        var body = await response.Content.ReadAsStringAsync();
+        return (false, body);
+    }
+
+    public async Task<bool> DiscontinuePrescriptionAsync(Guid id, Prescription prescription)
+    {
+        SetAuthHeader();
+        prescription.Status = PatientCrm.Core.Enums.PrescriptionStatus.Cancelled;
+        var response = await _http.PutAsJsonAsync($"api/prescriptions/{id}", prescription);
+        return response.IsSuccessStatusCode;
+    }
+
     // Image upload (multipart) – Blazor uses IBrowserFile
     public async Task<bool> UploadImageAsync(Guid patientId, Microsoft.AspNetCore.Components.Forms.IBrowserFile file, string title, string imageType, string? description, Guid? clinicalNoteId)
     {
