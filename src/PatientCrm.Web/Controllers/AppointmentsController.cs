@@ -1,38 +1,23 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using PatientCrm.Infrastructure.Data;
+using PatientCrm.Web.Services;
 
 namespace PatientCrm.Web.Controllers;
 
 [Authorize]
 public class AppointmentsController : Controller
 {
-    private readonly ApplicationDbContext _context;
+    private readonly PatientApiClient _api;
 
-    public AppointmentsController(ApplicationDbContext context)
+    public AppointmentsController(PatientApiClient api)
     {
-        _context = context;
-    }
-
-    private Guid GetTenantId()
-    {
-        var claim = User.FindFirst("TenantId")?.Value;
-        return Guid.TryParse(claim, out var id) ? id : Guid.Empty;
+        _api = api;
     }
 
     public async Task<IActionResult> Index(DateTime? date)
     {
-        var tenantId = GetTenantId();
         var targetDate = date ?? DateTime.Today;
-
-        var appointments = await _context.Appointments
-            .Include(a => a.Patient)
-            .Include(a => a.Provider)
-            .Where(a => a.TenantId == tenantId && !a.IsDeleted && a.StartTime.Date == targetDate)
-            .OrderBy(a => a.StartTime)
-            .ToListAsync();
-
+        var appointments = await _api.GetAppointmentsAsync(targetDate) ?? [];
         ViewBag.Date = targetDate;
         return View(appointments);
     }

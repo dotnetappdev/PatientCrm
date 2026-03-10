@@ -1,6 +1,6 @@
 @{
     ViewData["Title"] = "Administration";
-    var tenants = ViewBag.Tenants as List<PatientCrm.Core.Entities.Tenant> ?? new();
+    var tenants = ViewBag.Tenants as List<PatientCrm.Web.Services.TenantSummary> ?? new();
     bool isSuperAdmin = ViewBag.IsSuperAdmin == true;
 }
 

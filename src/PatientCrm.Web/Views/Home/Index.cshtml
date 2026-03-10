@@ -1,7 +1,8 @@
+@using PatientCrm.Web.Services
 @{
     ViewData["Title"] = "Dashboard";
-    var recentPatients = ViewBag.RecentPatients as List<PatientCrm.Core.Entities.Patient> ?? new();
-    var upcomingAppts = ViewBag.UpcomingAppointments as List<PatientCrm.Core.Entities.Appointment> ?? new();
+    var recentPatients = ViewBag.RecentPatients as List<PatientSummary> ?? new();
+    var upcomingAppts = ViewBag.UpcomingAppointments as List<AppointmentSummary> ?? new();
 }
 
 <div class="page-header">
@@ -93,7 +94,7 @@
                     <tr>
                         <td>
                             <div class="patient-info">
-                                <div class="patient-avatar">@(patient.FirstName.Substring(0,1))@(patient.LastName.Substring(0,1))</div>
+                                <div class="patient-avatar">@(patient.FirstName?.Substring(0,1) ?? "?")@(patient.LastName?.Substring(0,1) ?? "?")</div>
                                 <div>
                                     <div class="patient-name">@patient.FullName</div>
                                     <div class="patient-meta">DOB: @patient.DateOfBirth.ToString("dd MMM yyyy")</div>
@@ -105,19 +106,13 @@
                             {
                                 <span class="nhs-badge">NHS @patient.NhsNumber</span>
                             }
-                            else if (!string.IsNullOrEmpty(patient.HscniNumber))
-                            {
-                                <span class="hscni-badge">HSCNI @patient.HscniNumber</span>
-                            }
                             else
                             {
-                                <span class="text-muted">—</span>
+                                <span class="text-muted">-</span>
                             }
                         </td>
                         <td>
-                            <span class="badge @(patient.Status == PatientCrm.Core.Enums.PatientStatus.Active ? "badge-green" : "badge-gray")">
-                                @patient.Status
-                            </span>
+                            <span class="badge badge-green">Active</span>
                         </td>
                     </tr>
                 }
@@ -148,7 +143,7 @@
                 {
                     <tr>
                         <td>
-                            <div class="patient-name">@appt.Patient?.FullName</div>
+                            <div class="patient-name">@appt.PatientName</div>
                             <div class="patient-meta">@appt.Title</div>
                         </td>
                         <td>
@@ -156,7 +151,7 @@
                             <div class="patient-meta">@appt.StartTime.ToString("dd MMM")</div>
                         </td>
                         <td>
-                            <span class="badge badge-blue">@appt.AppointmentType</span>
+                            <span class="badge badge-blue">Appointment</span>
                         </td>
                     </tr>
                 }

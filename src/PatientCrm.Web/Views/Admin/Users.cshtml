@@ -1,4 +1,4 @@
-@model List<PatientCrm.Core.Entities.ApplicationUser>
+@model List<PatientCrm.Web.Services.UserDto>
 @{
     ViewData["Title"] = "Manage Users";
 }
@@ -29,7 +29,7 @@
                         </div>
                     </td>
                     <td>@user.Email</td>
-                    <td>@(user.Tenant?.Name ?? "—")</td>
+                    <td>@(user.TenantName ?? "-")</td>
                     <td>
                         @if (!string.IsNullOrEmpty(user.GmcNumber)) { <span class="badge badge-blue">GMC: @user.GmcNumber</span> }
                         @if (!string.IsNullOrEmpty(user.GdcNumber)) { <span class="badge badge-teal">GDC: @user.GdcNumber</span> }

@@ -1,3 +1,4 @@
+using Fido2NetLib;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -12,6 +13,28 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Infrastructure (EF Core, Identity, repositories)
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// Session (needed for FIDO2 challenges)
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(opts =>
+{
+    opts.IdleTimeout = TimeSpan.FromMinutes(10);
+    opts.Cookie.HttpOnly = true;
+    opts.Cookie.IsEssential = true;
+});
+
+// FIDO2 / Passkeys - register as singleton using direct instantiation
+var rpId = builder.Configuration["Fido2:RelyingPartyId"] ?? "localhost";
+var rpName = builder.Configuration["Fido2:RelyingPartyName"] ?? "PatientCRM";
+var origins = builder.Configuration.GetSection("Fido2:Origins").Get<HashSet<string>>()
+    ?? new HashSet<string>(["https://localhost:5001", "http://localhost:5000"]);
+builder.Services.AddSingleton(new Fido2(new Fido2Configuration
+{
+    ServerDomain = rpId,
+    ServerName = rpName,
+    Origins = origins,
+    TimestampDriftTolerance = 300_000
+}));
 
 // API Controllers
 builder.Services.AddControllers()
@@ -105,6 +128,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseCors();
+app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

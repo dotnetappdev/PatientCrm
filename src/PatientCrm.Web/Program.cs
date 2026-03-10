@@ -1,41 +1,50 @@
-using Microsoft.AspNetCore.Identity;
-using PatientCrm.Core.Entities;
-using PatientCrm.Infrastructure;
-using PatientCrm.Infrastructure.Data;
-using PatientCrm.Infrastructure.Seed;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using PatientCrm.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Infrastructure (EF Core, Identity, repositories)
-builder.Services.AddInfrastructure(builder.Configuration);
 
 // MVC
 builder.Services.AddControllersWithViews()
     .AddJsonOptions(opts => opts.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles);
 
-// Cookie Auth (Identity already handles this via AddIdentity)
-builder.Services.ConfigureApplicationCookie(options =>
+// Cookie authentication (no direct Identity / EF Core)
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Account/Login";
+        options.LogoutPath = "/Account/Logout";
+        options.AccessDeniedPath = "/Account/AccessDenied";
+        options.SlidingExpiration = true;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+    });
+
+builder.Services.AddAuthorization();
+
+// HttpContext accessor (needed by PatientApiClient)
+builder.Services.AddHttpContextAccessor();
+
+// Session (stores partial 2FA state)
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(opts =>
 {
-    options.LoginPath = "/Account/Login";
-    options.LogoutPath = "/Account/Logout";
-    options.AccessDeniedPath = "/Account/AccessDenied";
-    options.SlidingExpiration = true;
-    options.ExpireTimeSpan = TimeSpan.FromHours(8);
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-    options.Cookie.SameSite = SameSiteMode.Lax;
+    opts.IdleTimeout = TimeSpan.FromMinutes(10);
+    opts.Cookie.HttpOnly = true;
+    opts.Cookie.IsEssential = true;
+});
+
+// API client – all data access goes through the PatientCRM API
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
+    ?? "https://localhost:7001/";
+builder.Services.AddHttpClient<PatientApiClient>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
 });
 
 var app = builder.Build();
-
-// Seed database
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
-    await DatabaseSeeder.SeedAsync(context, userManager, roleManager);
-}
 
 if (!app.Environment.IsDevelopment())
 {
@@ -46,6 +55,7 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
 
