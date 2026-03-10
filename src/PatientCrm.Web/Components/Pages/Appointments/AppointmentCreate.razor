@@ -1,0 +1,169 @@
+@page "/appointments/book"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Entities
+@using PatientCrm.Core.Enums
+@inject PatientApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>Book Appointment - PatientCRM</PageTitle>
+
+<div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+        <a href="/appointments" style="color: var(--text-muted); text-decoration: none;">← Appointments</a>
+        <h1 class="page-title">Book New Appointment</h1>
+    </div>
+</div>
+
+<div class="card" style="max-width: 800px;">
+    <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+            <label class="form-label">Appointment Title *</label>
+            <input class="form-control" @bind="appt.Title" placeholder="e.g. Annual Review, Follow-up Consultation" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Type</label>
+            <select class="form-control" @bind="appt.AppointmentType">
+                @foreach (var t in Enum.GetValues<AppointmentType>())
+                { <option value="@t">@GetTypeLabel(t)</option> }
+            </select>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Date *</label>
+            <input type="date" class="form-control" @bind="appointmentDate" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Start Time *</label>
+            <input type="time" class="form-control" value="@startTimeStr"
+                   @onchange="@(e => startTimeStr = e.Value?.ToString() ?? "09:00")" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Duration (minutes)</label>
+            <select class="form-control" @bind="durationMinutes">
+                <option value="10">10 min</option>
+                <option value="15">15 min</option>
+                <option value="20">20 min</option>
+                <option value="30">30 min</option>
+                <option value="45">45 min</option>
+                <option value="60">60 min</option>
+                <option value="90">90 min</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Discipline</label>
+            <select class="form-control" @bind="appt.Discipline">
+                @foreach (var d in Enum.GetValues<DisciplineType>())
+                { <option value="@d">@d</option> }
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-control" @bind="appt.Status">
+                <option value="@AppointmentStatus.Scheduled">Scheduled</option>
+                <option value="@AppointmentStatus.Confirmed">Confirmed</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">Reason / Chief Complaint</label>
+        <input class="form-control" @bind="appt.Reason" placeholder="Reason for appointment..." />
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Location / Room</label>
+            <input class="form-control" @bind="appt.Location" placeholder="Room 3, Main Clinic" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Video Call Link</label>
+            <input class="form-control" @bind="appt.VideoCallLink" placeholder="https://meet.google.com/..." />
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" rows="3" @bind="appt.Notes"></textarea>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group" style="flex: 1;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" @bind="appt.IsUrgent" />
+                Mark as Urgent
+            </label>
+        </div>
+        <div class="form-group" style="flex: 1;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" @bind="appt.PatientNotified" />
+                Patient Notified
+            </label>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    { <div class="alert alert-danger">@errorMessage</div> }
+
+    <div class="d-flex gap-2" style="margin-top: 1.5rem;">
+        <a href="/appointments" class="btn btn-secondary">Cancel</a>
+        <button class="btn btn-primary" @onclick="Book" disabled="@saving">
+            @(saving ? "Booking..." : "Book Appointment")
+        </button>
+    </div>
+</div>
+
+@code {
+    private Appointment appt = new()
+    {
+        Title = "",
+        AppointmentType = AppointmentType.InPerson,
+        Status = AppointmentStatus.Scheduled,
+        Discipline = DisciplineType.GP
+    };
+    private DateTime appointmentDate = DateTime.Today;
+    private string startTimeStr = "09:00";
+    private int durationMinutes = 20;
+    private bool saving;
+    private string? errorMessage;
+
+    private async Task Book()
+    {
+        if (string.IsNullOrWhiteSpace(appt.Title))
+        {
+            errorMessage = "Appointment title is required.";
+            return;
+        }
+
+        var time = TimeSpan.TryParse(startTimeStr, out var ts) ? ts : new TimeSpan(9, 0, 0);
+        appt.StartTime = appointmentDate.Date + time;
+        appt.EndTime = appt.StartTime.AddMinutes(durationMinutes);
+
+        saving = true;
+        errorMessage = null;
+        var result = await Api.CreateAppointmentAsync(appt);
+        saving = false;
+
+        if (result != null)
+        {
+            Notifications.SetSuccess("Appointment booked successfully.");
+            Nav.NavigateTo($"/appointments?date={appointmentDate:yyyy-MM-dd}");
+        }
+        else errorMessage = "Failed to book appointment. Please check all fields and try again.";
+    }
+
+    private static string GetTypeLabel(AppointmentType t) => t switch
+    {
+        AppointmentType.InPerson => "In Person",
+        AppointmentType.Telephone => "Telephone",
+        AppointmentType.VideoCall => "Video Call",
+        AppointmentType.HomeVisit => "Home Visit",
+        _ => t.ToString()
+    };
+}

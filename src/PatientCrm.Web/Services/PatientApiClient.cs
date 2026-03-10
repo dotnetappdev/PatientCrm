@@ -167,6 +167,97 @@ public class PatientApiClient
         return await _http.GetFromJsonAsync<List<UserDto>>(url);
     }
 
+    public async Task<UserDetailDto?> GetUserAsync(Guid id)
+    {
+        SetAuthHeader();
+        return await _http.GetFromJsonAsync<UserDetailDto>($"api/admin/users/{id}");
+    }
+
+    public async Task<bool> CreateUserAsync(object request)
+    {
+        SetAuthHeader();
+        var response = await _http.PostAsJsonAsync("api/admin/users", request);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> UpdateUserAsync(Guid id, object request)
+    {
+        SetAuthHeader();
+        var response = await _http.PutAsJsonAsync($"api/admin/users/{id}", request);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> ToggleUserAsync(Guid id)
+    {
+        SetAuthHeader();
+        var response = await _http.PostAsync($"api/admin/users/{id}/toggle", null);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> ResetUserPasswordAsync(Guid id, string newPassword)
+    {
+        SetAuthHeader();
+        var response = await _http.PostAsJsonAsync($"api/admin/users/{id}/reset-password", new { newPassword });
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<(bool Ok, string? Error)> SetUserRoleAsync(Guid id, string role)
+    {
+        SetAuthHeader();
+        var response = await _http.PostAsJsonAsync($"api/admin/users/{id}/roles", new { role });
+        if (response.IsSuccessStatusCode) return (true, null);
+        var body = await response.Content.ReadAsStringAsync();
+        return (false, body);
+    }
+
+    // Appointments CRUD
+
+    public async Task<Appointment?> CreateAppointmentAsync(Appointment appointment)
+    {
+        SetAuthHeader();
+        var response = await _http.PostAsJsonAsync("api/appointments", appointment);
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadFromJsonAsync<Appointment>();
+    }
+
+    public async Task<bool> UpdateAppointmentAsync(Guid id, Appointment appointment)
+    {
+        SetAuthHeader();
+        var response = await _http.PutAsJsonAsync($"api/appointments/{id}", appointment);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> CancelAppointmentAsync(Guid id)
+    {
+        SetAuthHeader();
+        var response = await _http.DeleteAsync($"api/appointments/{id}");
+        return response.IsSuccessStatusCode;
+    }
+
+    // Prescriptions CRUD
+
+    public async Task<Prescription?> CreatePrescriptionAsync(Prescription prescription)
+    {
+        SetAuthHeader();
+        var response = await _http.PostAsJsonAsync("api/prescriptions", prescription);
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadFromJsonAsync<Prescription>();
+    }
+
+    public async Task<bool> UpdatePrescriptionAsync(Guid id, Prescription prescription)
+    {
+        SetAuthHeader();
+        var response = await _http.PutAsJsonAsync($"api/prescriptions/{id}", prescription);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DeletePrescriptionAsync(Guid id)
+    {
+        SetAuthHeader();
+        var response = await _http.DeleteAsync($"api/prescriptions/{id}");
+        return response.IsSuccessStatusCode;
+    }
+
     // Image upload (multipart) – Blazor uses IBrowserFile
     public async Task<bool> UploadImageAsync(Guid patientId, Microsoft.AspNetCore.Components.Forms.IBrowserFile file, string title, string imageType, string? description, Guid? clinicalNoteId)
     {
@@ -290,4 +381,10 @@ public class UserDto
     public string? GdcNumber { get; set; }
     public string? Title { get; set; }
     public string? TenantName { get; set; }
+}
+
+public class UserDetailDto : UserDto
+{
+    public string? NmcPin { get; set; }
+    public List<string> Roles { get; set; } = [];
 }

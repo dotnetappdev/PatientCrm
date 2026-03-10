@@ -1,0 +1,232 @@
+@page "/patients/{Id:guid}/edit"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Entities
+@using PatientCrm.Core.Enums
+@inject PatientApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>Edit Patient - PatientCRM</PageTitle>
+
+<div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+        <a href="/patients/@Id" style="color: var(--text-muted); text-decoration: none;">← Patient Record</a>
+        <h1 class="page-title">Edit Patient</h1>
+    </div>
+</div>
+
+@if (patient == null)
+{
+    <div style="text-align: center; padding: 3rem; color: var(--text-muted);">Loading...</div>
+}
+else
+{
+    <div class="card" style="max-width: 900px;">
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">First Name *</label>
+                <input class="form-control" @bind="patient.FirstName" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Last Name *</label>
+                <input class="form-control" @bind="patient.LastName" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Preferred Name</label>
+                <input class="form-control" @bind="patient.PreferredName" />
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Date of Birth *</label>
+                <input type="date" class="form-control" @bind="patient.DateOfBirth" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Gender</label>
+                <select class="form-control" @bind="patient.Gender">
+                    @foreach (var g in Enum.GetValues<Gender>())
+                    { <option value="@g">@g</option> }
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Blood Group</label>
+                <select class="form-control" @bind="patient.BloodGroup">
+                    @foreach (var bg in Enum.GetValues<BloodGroup>())
+                    { <option value="@bg">@bg</option> }
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">NHS Number</label>
+                <input class="form-control" @bind="patient.NhsNumber" placeholder="999 999 9999" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">HSCNI Number</label>
+                <input class="form-control" @bind="patient.HscniNumber" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Region</label>
+                <select class="form-control" @bind="patient.Region">
+                    @foreach (var r in Enum.GetValues<NhsRegion>())
+                    { <option value="@r">@r</option> }
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select class="form-control" @bind="patient.Status">
+                    @foreach (var s in Enum.GetValues<PatientStatus>())
+                    { <option value="@s">@s</option> }
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Ethnicity</label>
+                <input class="form-control" @bind="patient.Ethnicity" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Preferred Language</label>
+                <input class="form-control" @bind="patient.PreferredLanguage" />
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input class="form-control" @bind="patient.PhoneNumber" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Mobile</label>
+                <input class="form-control" @bind="patient.MobileNumber" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" @bind="patient.Email" />
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+                <label class="form-label">Address</label>
+                <input class="form-control" @bind="patient.AddressLine1" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">City</label>
+                <input class="form-control" @bind="patient.City" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Postcode</label>
+                <input class="form-control" @bind="patient.Postcode" />
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+                <label class="form-label">Allergies</label>
+                <input class="form-control" @bind="patient.Allergies" placeholder="List any known allergies..." />
+            </div>
+            <div class="form-group" style="flex: 2;">
+                <label class="form-label">Current Medications</label>
+                <input class="form-control" @bind="patient.CurrentMedications" />
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Emergency Contact Name</label>
+                <input class="form-control" @bind="patient.EmergencyContactName" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Relationship</label>
+                <input class="form-control" @bind="patient.EmergencyContactRelationship" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Emergency Phone</label>
+                <input class="form-control" @bind="patient.EmergencyContactPhone" />
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Registered GP</label>
+                <input class="form-control" @bind="patient.RegisteredGpName" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">GP Practice</label>
+                <input class="form-control" @bind="patient.RegisteredGpPractice" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">ODS Code</label>
+                <input class="form-control" @bind="patient.RegisteredGpOdsCode" />
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" @bind="patient.ConsentToTreatment" />
+                    Consent to Treatment
+                </label>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" @bind="patient.ConsentToDataSharing" />
+                    Consent to Data Sharing
+                </label>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" @bind="patient.RequiresInterpreter" />
+                    Requires Interpreter
+                </label>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        { <div class="alert alert-danger">@errorMessage</div> }
+
+        <div class="d-flex gap-2" style="margin-top: 1.5rem;">
+            <a href="/patients/@Id" class="btn btn-secondary">Cancel</a>
+            <button class="btn btn-primary" @onclick="Save" disabled="@saving">
+                @(saving ? "Saving..." : "Save Changes")
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private Patient? patient;
+    private bool saving;
+    private string? errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        patient = await Api.GetPatientAsync(Id);
+    }
+
+    private async Task Save()
+    {
+        if (patient == null) return;
+        if (string.IsNullOrWhiteSpace(patient.FirstName) || string.IsNullOrWhiteSpace(patient.LastName))
+        {
+            errorMessage = "First name and last name are required.";
+            return;
+        }
+        saving = true;
+        errorMessage = null;
+        var ok = await Api.UpdatePatientAsync(Id, patient);
+        saving = false;
+        if (ok)
+        {
+            Notifications.SetSuccess("Patient record updated successfully.");
+            Nav.NavigateTo($"/patients/{Id}");
+        }
+        else errorMessage = "Failed to save changes. Please try again.";
+    }
+}

@@ -73,10 +73,40 @@ Pre-populated edit form for an existing client organisation.
 
 ![Edit Client](docs/screenshots/09_client_edit.png)
 
-### User Management — Search & Filter
-System-wide user list with name/email search, Status filter (Active/Inactive) and 2FA filter, plus pagination.
+### User Management — Full CRUD
+System-wide user list with search, Status and 2FA filters, pagination, and **Create User**, **Edit** and **Enable/Disable** actions.
 
-![Admin Users Filtered](docs/screenshots/13_users_filtered.png)
+![Admin Users CRUD](docs/screenshots/19_users_with_crud.png)
+
+### Create User
+Register a new clinical or administrative user with role assignment (GP, Nurse, Dentist, Receptionist, TenantAdmin, SuperAdmin) and GMC/GDC registration numbers.
+
+![Create User](docs/screenshots/17_user_create.png)
+
+### Edit User & Reset Password
+Edit a user's profile details and role, plus a dedicated section to reset their password — all on one page.
+
+![Edit User](docs/screenshots/18_user_edit.png)
+
+### Patient Edit
+Edit all fields of an existing patient record — demographics, NHS/HSCNI identifiers, contact, address, allergies, medications, emergency contact, GP details, and consent flags.
+
+![Patient Edit](docs/screenshots/14_patient_edit.png)
+
+### Book Appointment
+Full appointment booking form with date, time, duration picker, appointment type (In Person / Telephone / Video Call / Home Visit), discipline, reason, location/room, video call link, urgency flag and patient notification.
+
+![Book Appointment](docs/screenshots/15_appointment_book.png)
+
+### Appointments — Book Button
+Day-view appointments with the **Book Appointment** button and Type / Status filter dropdowns.
+
+![Appointments with Book button](docs/screenshots/16_appointments_with_book_btn.png)
+
+### Admin Settings — Email, SMS & Video
+Settings page for SMTP email notifications, Twilio/GOV.UK Notify SMS, and Google Meet / Zoom / Teams video consultation integration, including appointment invite templates.
+
+![Admin Settings](docs/screenshots/20_admin_settings.png)
 
 ---
 

@@ -10,6 +10,10 @@
         <h1 class="page-title">Users</h1>
         <p class="page-subtitle">@allUsers.Count registered users</p>
     </div>
+    <a href="/admin/users/create" class="btn btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Create User
+    </a>
 </div>
 
 <div class="table-container">
@@ -49,6 +53,7 @@
                     <th>2FA</th>
                     <th>Last Login</th>
                     <th>Status</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -90,11 +95,20 @@
                                 @(user.IsActive ? "Active" : "Inactive")
                             </span>
                         </td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <a href="/admin/users/@user.Id/edit" class="btn btn-sm btn-secondary">Edit</a>
+                                <button class="btn btn-sm @(user.IsActive ? "btn-secondary" : "btn-primary")"
+                                        @onclick="() => ToggleUser(user.Id)">
+                                    @(user.IsActive ? "Disable" : "Enable")
+                                </button>
+                            </div>
+                        </td>
                     </tr>
                 }
                 @if (!filteredUsers.Any())
                 {
-                    <tr><td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-muted);">No users found.</td></tr>
+                    <tr><td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-muted);">No users found.</td></tr>
                 }
             </tbody>
         </table>
@@ -163,4 +177,14 @@
 
     private void PrevPage() { if (currentPage > 1) currentPage--; }
     private void NextPage() { if (currentPage < totalPages) currentPage++; }
+
+    private async Task ToggleUser(Guid id)
+    {
+        var ok = await Api.ToggleUserAsync(id);
+        if (ok)
+        {
+            allUsers = await Api.GetUsersAsync(null) ?? [];
+            ApplyFilters();
+        }
+    }
 }

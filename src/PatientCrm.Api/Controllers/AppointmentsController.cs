@@ -20,9 +20,11 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAppointments(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetAppointments([FromQuery] DateTime? date, CancellationToken cancellationToken)
     {
         var appointments = await _unitOfWork.Appointments.GetAllAsync(cancellationToken);
+        if (date.HasValue)
+            appointments = appointments.Where(a => a.StartTime.Date == date.Value.Date);
         return Ok(appointments);
     }
 
