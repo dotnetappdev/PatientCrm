@@ -120,6 +120,7 @@ public class AccountController : Controller
 
     [HttpPost]
     [Authorize]
+    [Microsoft.AspNetCore.Mvc.IgnoreAntiforgeryToken] // AJAX-only endpoint called with JSON body
     public IActionResult UpdateTheme([FromBody] ThemeUpdateModel model)
     {
         // Theme is stored client-side; the API will be called via JS
