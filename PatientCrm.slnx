@@ -3,6 +3,7 @@
     <Project Path="src/PatientCrm.Api/PatientCrm.Api.csproj" />
     <Project Path="src/PatientCrm.Core/PatientCrm.Core.csproj" />
     <Project Path="src/PatientCrm.Infrastructure/PatientCrm.Infrastructure.csproj" />
+    <Project Path="src/PatientCrm.Maui/PatientCrm.Maui.csproj" />
     <Project Path="src/PatientCrm.Web/PatientCrm.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">

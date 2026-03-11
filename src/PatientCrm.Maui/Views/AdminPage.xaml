@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="PatientCrm.Maui.Views.AdminPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:PatientCrm.Maui.ViewModels"
+             xmlns:models="clr-namespace:PatientCrm.Maui.Models"
+             x:DataType="vm:AdminViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="#F0F4F5">
+
+    <RefreshView IsRefreshing="{Binding IsBusy}" Command="{Binding LoadCommand}">
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="16">
+                <Frame IsVisible="{Binding ErrorMessage, Converter={StaticResource NullToBoolConverter}}"
+                       BackgroundColor="#FDECEA" BorderColor="#DA291C" CornerRadius="8" Padding="12">
+                    <Label Text="{Binding ErrorMessage}" TextColor="#DA291C" />
+                </Frame>
+                <Frame IsVisible="{Binding SuccessMessage, Converter={StaticResource NullToBoolConverter}}"
+                       BackgroundColor="#E8F5E9" BorderColor="#007F3B" CornerRadius="8" Padding="12">
+                    <Label Text="{Binding SuccessMessage}" TextColor="#007F3B" />
+                </Frame>
+
+                <!-- Stats -->
+                <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="12">
+                    <Frame Grid.Row="0" Grid.Column="0" BackgroundColor="White" CornerRadius="12" Padding="12">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="{Binding Stats.TenantCount}" FontSize="22" FontAttributes="Bold" TextColor="#005EB8" HorizontalOptions="Center" />
+                            <Label Text="Tenants" FontSize="11" TextColor="#4C6272" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Frame>
+                    <Frame Grid.Row="0" Grid.Column="1" BackgroundColor="White" CornerRadius="12" Padding="12">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="{Binding Stats.UserCount}" FontSize="22" FontAttributes="Bold" TextColor="#007F3B" HorizontalOptions="Center" />
+                            <Label Text="Users" FontSize="11" TextColor="#4C6272" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Frame>
+                    <Frame Grid.Row="0" Grid.Column="2" BackgroundColor="White" CornerRadius="12" Padding="12">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="{Binding Stats.PatientCount}" FontSize="22" FontAttributes="Bold" TextColor="#FFB81C" HorizontalOptions="Center" />
+                            <Label Text="Patients" FontSize="11" TextColor="#4C6272" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Frame>
+                </Grid>
+
+                <!-- Tenants -->
+                <Label Text="Tenants" FontSize="18" FontAttributes="Bold" TextColor="#212B32" />
+                <CollectionView ItemsSource="{Binding Tenants}" HeightRequest="250">
+                    <CollectionView.EmptyView>
+                        <Label Text="No tenants" TextColor="#768692" HorizontalOptions="Center" FontSize="13" />
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:TenantSummary">
+                            <Frame BackgroundColor="White" CornerRadius="10" Padding="12" Margin="0,0,0,8" BorderColor="#E8EDEE">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                        <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="14" TextColor="#212B32" />
+                                        <Label Text="{Binding OdsCode, StringFormat='ODS: {0}'}" FontSize="12" TextColor="#4C6272" />
+                                        <Label Text="{Binding ClientType}" FontSize="11" TextColor="#768692" />
+                                    </VerticalStackLayout>
+                                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="4">
+                                        <Label Text="{Binding IsActive, Converter={StaticResource BoolToActiveConverter}}"
+                                               FontSize="12" FontAttributes="Bold"
+                                               HorizontalOptions="Center" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <!-- Users -->
+                <Label Text="Users" FontSize="18" FontAttributes="Bold" TextColor="#212B32" />
+                <CollectionView ItemsSource="{Binding Users}" HeightRequest="300">
+                    <CollectionView.EmptyView>
+                        <Label Text="No users" TextColor="#768692" HorizontalOptions="Center" FontSize="13" />
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:UserDto">
+                            <Frame BackgroundColor="White" CornerRadius="10" Padding="12" Margin="0,0,0,8" BorderColor="#E8EDEE">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                        <Label Text="{Binding FullName}" FontAttributes="Bold" FontSize="14" TextColor="#212B32" />
+                                        <Label Text="{Binding Email}" FontSize="12" TextColor="#4C6272" />
+                                        <Label Text="{Binding TenantName, StringFormat='Tenant: {0}'}" FontSize="11" TextColor="#768692" />
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="1"
+                                           Text="{Binding IsActive, Converter={StaticResource BoolToActiveConverter}}"
+                                           FontSize="12" FontAttributes="Bold" VerticalOptions="Center" />
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

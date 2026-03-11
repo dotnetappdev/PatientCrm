@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="PatientCrm.Maui.Views.Patients.PatientCreatePage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:PatientCrm.Maui.ViewModels"
+             x:DataType="vm:PatientCreateViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="#F0F4F5">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Cancel" Command="{Binding CancelCommand}" />
+    </ContentPage.ToolbarItems>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="12">
+
+            <Frame IsVisible="{Binding ErrorMessage, Converter={StaticResource NullToBoolConverter}}"
+                   BackgroundColor="#FDECEA" BorderColor="#DA291C" CornerRadius="8" Padding="12">
+                <Label Text="{Binding ErrorMessage}" TextColor="#DA291C" />
+            </Frame>
+
+            <!-- Demographics -->
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Personal Details" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="First Name *" FontSize="13" TextColor="#4C6272" />
+                        <Entry Text="{Binding FirstName}" Placeholder="First name" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Last Name *" FontSize="13" TextColor="#4C6272" />
+                        <Entry Text="{Binding LastName}" Placeholder="Last name" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Date of Birth" FontSize="13" TextColor="#4C6272" />
+                        <DatePicker Date="{Binding DateOfBirth}" Format="dd/MM/yyyy" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- NHS Identifiers -->
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="NHS Identifiers" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="NHS Number" FontSize="13" TextColor="#4C6272" />
+                        <Entry Text="{Binding NhsNumber}" Placeholder="NHS number" Keyboard="Numeric" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="HSCNI Number" FontSize="13" TextColor="#4C6272" />
+                        <Entry Text="{Binding HscniNumber}" Placeholder="HSCNI number" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Contact -->
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Contact Details" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+                    <Entry Text="{Binding Email}" Placeholder="Email address" Keyboard="Email" />
+                    <Entry Text="{Binding PhoneNumber}" Placeholder="Phone number" Keyboard="Telephone" />
+                    <Entry Text="{Binding MobileNumber}" Placeholder="Mobile number" Keyboard="Telephone" />
+                    <Entry Text="{Binding AddressLine1}" Placeholder="Address line 1" />
+                    <Entry Text="{Binding City}" Placeholder="City / Town" />
+                    <Entry Text="{Binding Postcode}" Placeholder="Postcode" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Clinical -->
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Clinical Info" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+                    <Editor Text="{Binding Allergies}" Placeholder="Known allergies" HeightRequest="60" />
+                    <Editor Text="{Binding CurrentMedications}" Placeholder="Current medications" HeightRequest="60" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Emergency Contact -->
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Emergency Contact" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+                    <Entry Text="{Binding EmergencyContactName}" Placeholder="Contact name" />
+                    <Entry Text="{Binding EmergencyContactRelationship}" Placeholder="Relationship" />
+                    <Entry Text="{Binding EmergencyContactPhone}" Placeholder="Phone number" Keyboard="Telephone" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- GP -->
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Registered GP" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+                    <Entry Text="{Binding RegisteredGpName}" Placeholder="GP name" />
+                    <Entry Text="{Binding RegisteredGpPracticeName}" Placeholder="Practice name" />
+                    <Entry Text="{Binding RegisteredGpOdsCode}" Placeholder="ODS code" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <Button Text="Register Patient" Command="{Binding SaveCommand}"
+                    BackgroundColor="#005EB8" TextColor="White"
+                    FontAttributes="Bold" FontSize="16"
+                    HeightRequest="52" CornerRadius="8"
+                    IsEnabled="{Binding IsNotBusy}" />
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+                               Color="#005EB8" HorizontalOptions="Center" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

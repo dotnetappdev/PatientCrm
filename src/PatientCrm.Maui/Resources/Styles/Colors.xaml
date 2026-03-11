@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?xaml-comp compile="true" ?>
+<ResourceDictionary 
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!-- NHS Brand Colours -->
+    <Color x:Key="NhsBlue">#005EB8</Color>
+    <Color x:Key="NhsDarkBlue">#003087</Color>
+    <Color x:Key="NhsGreen">#007F3B</Color>
+    <Color x:Key="NhsLightGreen">#78BE20</Color>
+    <Color x:Key="NhsYellow">#FFB81C</Color>
+    <Color x:Key="NhsRed">#DA291C</Color>
+    <Color x:Key="NhsLightBlue">#41B6E6</Color>
+    <Color x:Key="NhsPink">#AE2573</Color>
+
+    <!-- Neutral / Text -->
+    <Color x:Key="NhsBlack">#212B32</Color>
+    <Color x:Key="NhsDarkGrey">#425563</Color>
+    <Color x:Key="NhsMidGrey">#4C6272</Color>
+    <Color x:Key="NhsGrey">#768692</Color>
+    <Color x:Key="NhsPaleGrey">#E8EDEE</Color>
+    <Color x:Key="NhsPageBackground">#F0F4F5</Color>
+    <Color x:Key="White">#FFFFFF</Color>
+
+    <!-- Semantic -->
+    <Color x:Key="Primary">#005EB8</Color>
+    <Color x:Key="PrimaryDark">#003087</Color>
+    <Color x:Key="Secondary">#41B6E6</Color>
+    <Color x:Key="Success">#007F3B</Color>
+    <Color x:Key="Warning">#FFB81C</Color>
+    <Color x:Key="Danger">#DA291C</Color>
+    <Color x:Key="Info">#41B6E6</Color>
+    <Color x:Key="PageBackground">#F0F4F5</Color>
+
+    <!-- Light Theme -->
+    <Color x:Key="Background">#FFFFFF</Color>
+    <Color x:Key="CardBackground">#FFFFFF</Color>
+    <Color x:Key="TextPrimary">#212B32</Color>
+    <Color x:Key="TextSecondary">#4C6272</Color>
+    <Color x:Key="TextMuted">#768692</Color>
+    <Color x:Key="Divider">#E8EDEE</Color>
+</ResourceDictionary>

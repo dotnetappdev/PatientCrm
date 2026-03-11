@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="PatientCrm.Maui.Views.Appointments.AppointmentListPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:PatientCrm.Maui.ViewModels"
+             xmlns:models="clr-namespace:PatientCrm.Maui.Models"
+             x:DataType="vm:AppointmentListViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="#F0F4F5">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="+" Command="{Binding BookAppointmentCommand}" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="Auto,*" Padding="16" RowSpacing="12">
+
+        <!-- Date Navigator -->
+        <Frame Grid.Row="0" BackgroundColor="White" CornerRadius="12" Padding="12">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                <Button Grid.Column="0" Text="‹" Command="{Binding PreviousDayCommand}"
+                        BackgroundColor="#005EB8" TextColor="White" WidthRequest="40" HeightRequest="40" CornerRadius="20" FontSize="20" />
+                <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" Spacing="2">
+                    <Label Text="{Binding SelectedDate, StringFormat='{0:dddd}'}"
+                           FontAttributes="Bold" FontSize="14" TextColor="#212B32" HorizontalOptions="Center" />
+                    <Label Text="{Binding SelectedDate, StringFormat='{0:d MMMM yyyy}'}"
+                           FontSize="12" TextColor="#4C6272" HorizontalOptions="Center" />
+                </VerticalStackLayout>
+                <Button Grid.Column="2" Text="›" Command="{Binding NextDayCommand}"
+                        BackgroundColor="#005EB8" TextColor="White" WidthRequest="40" HeightRequest="40" CornerRadius="20" FontSize="20" />
+            </Grid>
+        </Frame>
+
+        <!-- Appointment List -->
+        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsBusy}" Command="{Binding LoadCommand}">
+            <CollectionView ItemsSource="{Binding Appointments}" SelectionMode="None">
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8" Padding="20">
+                        <Label Text="📅" FontSize="48" HorizontalOptions="Center" />
+                        <Label Text="No appointments for this day" FontSize="16" TextColor="#768692" HorizontalOptions="Center" />
+                        <Button Text="Book Appointment" Command="{Binding BookAppointmentCommand}"
+                                BackgroundColor="#005EB8" TextColor="White" CornerRadius="8" />
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:Appointment">
+                        <Frame BackgroundColor="White" CornerRadius="10" Padding="14" Margin="0,0,0,10" BorderColor="#E8EDEE">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                <!-- Time -->
+                                <VerticalStackLayout Grid.Column="0" VerticalOptions="Center" WidthRequest="52">
+                                    <Label Text="{Binding StartTime, StringFormat='{0:HH:mm}'}"
+                                           FontAttributes="Bold" FontSize="16" TextColor="#005EB8" HorizontalOptions="Center" />
+                                    <Label Text="{Binding EndTime, StringFormat='{0:HH:mm}'}"
+                                           FontSize="11" TextColor="#768692" HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                                <!-- Details -->
+                                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                                    <Label Text="{Binding Title}" FontAttributes="Bold" FontSize="14" TextColor="#212B32" />
+                                    <Label Text="{Binding PatientName}" FontSize="13" TextColor="#4C6272" />
+                                    <Label Text="{Binding Reason}" FontSize="12" TextColor="#768692" MaxLines="1" />
+                                    <Label Text="{Binding DisciplineType}" FontSize="11" TextColor="#4C6272" />
+                                </VerticalStackLayout>
+                                <!-- Status -->
+                                <Label Grid.Column="2" Text="{Binding Status}" FontSize="11"
+                                       TextColor="#007F3B" VerticalOptions="Center" FontAttributes="Bold" />
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+</ContentPage>
