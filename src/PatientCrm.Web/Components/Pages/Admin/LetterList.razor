@@ -92,7 +92,7 @@ else
     {
         <div class="d-flex gap-2 justify-center" style="margin-top: 1rem;">
             <button class="btn btn-secondary btn-sm" disabled="@(page == 1)" @onclick="() => SetPage(page - 1)">← Prev</button>
-            <span style="line-height: 2rem; color: var(--text-muted);">Page @page of @totalPages</span>
+            <span style="line-height: 2rem; color: var(--text-muted);">Page @(page) of @(totalPages)</span>
             <button class="btn btn-secondary btn-sm" disabled="@(page == totalPages)" @onclick="() => SetPage(page + 1)">Next →</button>
         </div>
     }
