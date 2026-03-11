@@ -1,14 +1,77 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<Shell
-    x:Class="PatientCrm.Maui.AppShell"
-    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:PatientCrm.Maui"
-    Title="PatientCrm.Maui">
+<Shell x:Class="PatientCrm.Maui.AppShell"
+       xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:views="clr-namespace:PatientCrm.Maui.Views"
+       xmlns:patients="clr-namespace:PatientCrm.Maui.Views.Patients"
+       xmlns:appointments="clr-namespace:PatientCrm.Maui.Views.Appointments"
+       xmlns:portal="clr-namespace:PatientCrm.Maui.Views.Portal"
+       Shell.FlyoutBehavior="Flyout"
+       Shell.FlyoutHeaderBehavior="CollapseOnScroll"
+       FlyoutBackgroundColor="#003087"
+       Title="PatientCRM">
 
-    <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+    <Shell.FlyoutHeader>
+        <VerticalStackLayout BackgroundColor="#005EB8" Padding="20,40,20,20" Spacing="4">
+            <Frame BackgroundColor="#003087" CornerRadius="30" WidthRequest="60" HeightRequest="60" Padding="0">
+                <Label Text="🏥" FontSize="28" HorizontalOptions="Center" VerticalOptions="Center" />
+            </Frame>
+            <Label Text="PatientCRM" FontSize="20" FontAttributes="Bold" TextColor="White" />
+            <Label Text="Healthcare Management" FontSize="12" TextColor="#BFD7ED" />
+        </VerticalStackLayout>
+    </Shell.FlyoutHeader>
 
+    <Shell.Resources>
+        <Style x:Key="FlyoutItemStyle" TargetType="Grid">
+            <Setter Property="BackgroundColor" Value="Transparent" />
+        </Style>
+    </Shell.Resources>
+
+    <!-- Login (not in flyout) -->
+    <ShellContent Route="login" IsVisible="False"
+                  ContentTemplate="{DataTemplate views:LoginPage}" />
+
+    <!-- Clinician / Admin section -->
+    <FlyoutItem Title="Dashboard" Icon="dashboard.png" Route="dashboard">
+        <ShellContent ContentTemplate="{DataTemplate views:DashboardPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Patients" Icon="patients.png" Route="patients">
+        <ShellContent ContentTemplate="{DataTemplate patients:PatientListPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Appointments" Icon="appointments.png" Route="appointments">
+        <ShellContent ContentTemplate="{DataTemplate appointments:AppointmentListPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Departments" Icon="departments.png" Route="departments">
+        <ShellContent ContentTemplate="{DataTemplate views:DepartmentsPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Administration" Icon="admin.png" Route="admin">
+        <ShellContent ContentTemplate="{DataTemplate views:AdminPage}" />
+    </FlyoutItem>
+
+    <!-- Patient Portal section -->
+    <FlyoutItem Title="My Health" Icon="portal.png" Route="portal">
+        <Tab>
+            <ShellContent Title="Dashboard" Route="dashboard" ContentTemplate="{DataTemplate portal:PortalDashboardPage}" />
+            <ShellContent Title="Appointments" Route="appointments" ContentTemplate="{DataTemplate portal:PortalAppointmentsPage}" />
+            <ShellContent Title="Medications" Route="prescriptions" ContentTemplate="{DataTemplate portal:PortalPrescriptionsPage}" />
+            <ShellContent Title="Notes" Route="notes" ContentTemplate="{DataTemplate portal:PortalNotesPage}" />
+            <ShellContent Title="Letters" Route="letters" ContentTemplate="{DataTemplate portal:PortalLettersPage}" />
+            <ShellContent Title="Profile" Route="profile" ContentTemplate="{DataTemplate portal:PortalProfilePage}" />
+        </Tab>
+    </FlyoutItem>
+
+    <Shell.ItemTemplate>
+        <DataTemplate>
+            <Grid ColumnDefinitions="0.2*,0.8*" HeightRequest="50">
+                <Image Source="{Binding FlyoutIcon}" HorizontalOptions="Center" VerticalOptions="Center"
+                       WidthRequest="24" HeightRequest="24" Margin="10,0" />
+                <Label Grid.Column="1" Text="{Binding Title}" VerticalOptions="Center"
+                       TextColor="White" FontSize="15" />
+            </Grid>
+        </DataTemplate>
+    </Shell.ItemTemplate>
 </Shell>
