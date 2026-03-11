@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="PatientCrm.Maui.Views.Portal.PortalProfilePage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:PatientCrm.Maui.ViewModels.Portal"
+             x:DataType="vm:PortalProfileViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="#F0F4F5">
+
+    <RefreshView IsRefreshing="{Binding IsBusy}" Command="{Binding LoadCommand}">
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="12">
+                <Frame IsVisible="{Binding ErrorMessage, Converter={StaticResource NullToBoolConverter}}"
+                       BackgroundColor="#FDECEA" BorderColor="#DA291C" CornerRadius="8" Padding="12">
+                    <Label Text="{Binding ErrorMessage}" TextColor="#DA291C" />
+                </Frame>
+
+                <!-- Personal Info -->
+                <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Personal Information" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.FullName, StringFormat='Name: {0}'}" FontSize="14" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.DateOfBirth, StringFormat='Date of Birth: {0:dd/MM/yyyy}'}" FontSize="14" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.Gender, StringFormat='Gender: {0}'}" FontSize="14" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.BloodGroup, StringFormat='Blood Group: {0}'}" FontSize="14" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.PreferredLanguage, StringFormat='Preferred Language: {0}'}" FontSize="14" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.Religion, StringFormat='Religion: {0}'}" FontSize="14" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.Ethnicity, StringFormat='Ethnicity: {0}'}" FontSize="14" TextColor="#212B32" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- NHS Identifiers -->
+                <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="NHS Identifiers" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.NhsNumber, StringFormat='NHS Number: {0}'}" FontSize="14" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.HscniNumber, StringFormat='HSCNI Number: {0}'}" FontSize="14" TextColor="#212B32" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Contact -->
+                <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Contact Details" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.Email, StringFormat='Email: {0}'}" FontSize="14" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.PhoneNumber, StringFormat='Phone: {0}'}" FontSize="14" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.MobileNumber, StringFormat='Mobile: {0}'}" FontSize="14" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.AddressLine1}" FontSize="14" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.City}" FontSize="14" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.Postcode}" FontSize="14" TextColor="#212B32" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- GP Info -->
+                <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="GP Registration" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.RegisteredGpName, StringFormat='GP: {0}'}" FontSize="14" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.RegisteredGpPracticeName, StringFormat='Practice: {0}'}" FontSize="14" TextColor="#212B32" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Emergency Contact -->
+                <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Emergency Contact" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.EmergencyContactName, StringFormat='Name: {0}'}" FontSize="14" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.EmergencyContactRelationship, StringFormat='Relationship: {0}'}" FontSize="14" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.EmergencyContactPhone, StringFormat='Phone: {0}'}" FontSize="14" TextColor="#212B32" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Clinical Summary -->
+                <Frame BackgroundColor="#FFF3CD" BorderColor="#FFB81C" CornerRadius="12" Padding="16"
+                       IsVisible="{Binding Patient.Allergies, Converter={StaticResource NullToBoolConverter}}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="⚠️ Clinical Summary" FontSize="16" FontAttributes="Bold" TextColor="#856404" />
+                        <Label Text="{Binding Patient.Allergies, StringFormat='Allergies: {0}'}" FontSize="14" TextColor="#856404" />
+                        <Label Text="{Binding Patient.MedicalAlerts, StringFormat='Alerts: {0}'}" FontSize="14" TextColor="#856404"
+                               IsVisible="{Binding Patient.MedicalAlerts, Converter={StaticResource NullToBoolConverter}}" />
+                    </VerticalStackLayout>
+                </Frame>
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

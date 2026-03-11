@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="PatientCrm.Maui.Views.Appointments.AppointmentCreatePage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:PatientCrm.Maui.ViewModels"
+             x:DataType="vm:AppointmentCreateViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="#F0F4F5">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Cancel" Command="{Binding CancelCommand}" />
+    </ContentPage.ToolbarItems>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="12">
+            <Frame IsVisible="{Binding ErrorMessage, Converter={StaticResource NullToBoolConverter}}"
+                   BackgroundColor="#FDECEA" BorderColor="#DA291C" CornerRadius="8" Padding="12">
+                <Label Text="{Binding ErrorMessage}" TextColor="#DA291C" />
+            </Frame>
+
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Appointment Details" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Title" FontSize="13" TextColor="#4C6272" />
+                        <Entry Text="{Binding AppointmentTitle}" Placeholder="e.g. GP Consultation" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Reason / Chief Complaint" FontSize="13" TextColor="#4C6272" />
+                        <Entry Text="{Binding Reason}" Placeholder="Reason for visit" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Date" FontSize="13" TextColor="#4C6272" />
+                        <DatePicker Date="{Binding Date}" Format="dd/MM/yyyy" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Start Time" FontSize="13" TextColor="#4C6272" />
+                        <TimePicker Time="{Binding StartTime}" Format="HH:mm" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Duration (minutes)" FontSize="13" TextColor="#4C6272" />
+                        <Stepper Value="{Binding DurationMinutes}" Minimum="5" Maximum="120" Increment="5" />
+                        <Label Text="{Binding DurationMinutes, StringFormat='{0} minutes'}" FontSize="12" TextColor="#4C6272" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Location" FontSize="13" TextColor="#4C6272" />
+                        <Entry Text="{Binding Location}" Placeholder="Room / location" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Notes" FontSize="13" TextColor="#4C6272" />
+                        <Editor Text="{Binding Notes}" Placeholder="Additional notes" HeightRequest="80" />
+                    </VerticalStackLayout>
+                    <HorizontalStackLayout Spacing="12">
+                        <CheckBox IsChecked="{Binding IsUrgent}" />
+                        <Label Text="Urgent" VerticalOptions="Center" TextColor="#212B32" />
+                        <CheckBox IsChecked="{Binding PatientNotified}" />
+                        <Label Text="Patient Notified" VerticalOptions="Center" TextColor="#212B32" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Frame>
+
+            <Button Text="Book Appointment" Command="{Binding SaveCommand}"
+                    BackgroundColor="#005EB8" TextColor="White"
+                    FontAttributes="Bold" FontSize="16"
+                    HeightRequest="52" CornerRadius="8"
+                    IsEnabled="{Binding IsNotBusy}" />
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+                               Color="#005EB8" HorizontalOptions="Center" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

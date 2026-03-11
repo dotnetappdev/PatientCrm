@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="PatientCrm.Maui.Views.Patients.PatientListPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:PatientCrm.Maui.ViewModels"
+             xmlns:models="clr-namespace:PatientCrm.Maui.Models"
+             x:DataType="vm:PatientListViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="#F0F4F5">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="+" Command="{Binding CreatePatientCommand}"
+                     Order="Primary" Priority="0" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="Auto,*,Auto" Padding="16" RowSpacing="12">
+
+        <!-- Search Bar -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <SearchBar Grid.Column="0" Text="{Binding SearchQuery}"
+                       Placeholder="Search by name, NHS number..."
+                       SearchCommand="{Binding SearchCommand}" />
+            <Button Grid.Column="1" Text="Search" Command="{Binding SearchCommand}"
+                    BackgroundColor="#005EB8" TextColor="White" CornerRadius="8" />
+        </Grid>
+
+        <!-- Error Banner -->
+        <Frame Grid.Row="0" IsVisible="{Binding ErrorMessage, Converter={StaticResource NullToBoolConverter}}"
+               BackgroundColor="#FDECEA" BorderColor="#DA291C" CornerRadius="8" Padding="12" Margin="0,48,0,0">
+            <Label Text="{Binding ErrorMessage}" TextColor="#DA291C" />
+        </Frame>
+
+        <!-- Patient List -->
+        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsBusy}" Command="{Binding LoadCommand}">
+            <CollectionView ItemsSource="{Binding Patients}" SelectionMode="None">
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8">
+                        <Label Text="🔍" FontSize="48" HorizontalOptions="Center" />
+                        <Label Text="No patients found" FontSize="16" TextColor="#768692" HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:Patient">
+                        <Frame BackgroundColor="White" CornerRadius="10" Padding="14" Margin="0,0,0,10"
+                               HasShadow="False" BorderColor="#E8EDEE">
+                            <Frame.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:PatientListViewModel}}, Path=ViewPatientCommand}"
+                                                      CommandParameter="{Binding .}" />
+                            </Frame.GestureRecognizers>
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                <!-- Avatar -->
+                                <Frame Grid.Column="0" BackgroundColor="#005EB8" CornerRadius="24"
+                                       WidthRequest="48" HeightRequest="48" Padding="0">
+                                    <Label Text="{Binding FirstName[0]}" TextColor="White" FontSize="18"
+                                           FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Frame>
+
+                                <!-- Info -->
+                                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                                    <Label Text="{Binding FullName}" FontAttributes="Bold" FontSize="15" TextColor="#212B32" />
+                                    <Label Text="{Binding NhsNumber, StringFormat='NHS: {0}'}" FontSize="12" TextColor="#4C6272" />
+                                    <Label Text="{Binding DateOfBirth, StringFormat='DOB: {0:dd/MM/yyyy}'}" FontSize="12" TextColor="#4C6272" />
+                                </VerticalStackLayout>
+
+                                <!-- Status badge -->
+                                <Frame Grid.Column="2" CornerRadius="6" Padding="6,3" VerticalOptions="Center">
+                                    <Frame.BackgroundColor>
+                                        <Binding Path="Status">
+                                            <Binding.Converter>
+                                                <StaticResource Key="PatientStatusColorConverter" />
+                                            </Binding.Converter>
+                                        </Binding>
+                                    </Frame.BackgroundColor>
+                                    <Label Text="{Binding Status}" FontSize="11" TextColor="White" FontAttributes="Bold" />
+                                </Frame>
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+
+        <!-- Pagination -->
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+            <Button Grid.Column="0" Text="← Previous" Command="{Binding PreviousPageCommand}"
+                    IsEnabled="{Binding HasPreviousPage}"
+                    BackgroundColor="#005EB8" TextColor="White" CornerRadius="8"
+                    FontSize="13" />
+            <Label Grid.Column="1"
+                   Text="{Binding TotalCount, StringFormat='{0} patients'}"
+                   HorizontalOptions="Center" VerticalOptions="Center"
+                   TextColor="#4C6272" FontSize="13" />
+            <Button Grid.Column="2" Text="Next →" Command="{Binding NextPageCommand}"
+                    IsEnabled="{Binding HasNextPage}"
+                    BackgroundColor="#005EB8" TextColor="White" CornerRadius="8"
+                    FontSize="13" />
+        </Grid>
+    </Grid>
+</ContentPage>

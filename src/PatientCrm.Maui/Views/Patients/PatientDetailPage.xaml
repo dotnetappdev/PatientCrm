@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="PatientCrm.Maui.Views.Patients.PatientDetailPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:PatientCrm.Maui.ViewModels"
+             xmlns:models="clr-namespace:PatientCrm.Maui.Models"
+             x:DataType="vm:PatientDetailViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="#F0F4F5">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Edit" Command="{Binding EditPatientCommand}" />
+    </ContentPage.ToolbarItems>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="16">
+
+            <!-- Loading / Error -->
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+                               Color="#005EB8" HorizontalOptions="Center" />
+            <Frame IsVisible="{Binding ErrorMessage, Converter={StaticResource NullToBoolConverter}}"
+                   BackgroundColor="#FDECEA" BorderColor="#DA291C" CornerRadius="8" Padding="12">
+                <Label Text="{Binding ErrorMessage}" TextColor="#DA291C" />
+            </Frame>
+            <Frame IsVisible="{Binding SuccessMessage, Converter={StaticResource NullToBoolConverter}}"
+                   BackgroundColor="#E8F5E9" BorderColor="#007F3B" CornerRadius="8" Padding="12">
+                <Label Text="{Binding SuccessMessage}" TextColor="#007F3B" />
+            </Frame>
+
+            <!-- Patient Header -->
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="20" IsVisible="{Binding Patient, Converter={StaticResource NullToBoolConverter}}">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+                    <Frame Grid.Column="0" BackgroundColor="#005EB8" CornerRadius="36"
+                           WidthRequest="72" HeightRequest="72" Padding="0">
+                        <Label Text="{Binding Patient.FirstName[0]}" TextColor="White" FontSize="28"
+                               FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                    </Frame>
+                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="3">
+                        <Label Text="{Binding Patient.FullName}" FontSize="20" FontAttributes="Bold" TextColor="#212B32" />
+                        <Label Text="{Binding Patient.NhsNumber, StringFormat='NHS: {0}'}" FontSize="13" TextColor="#4C6272" />
+                        <Label Text="{Binding Patient.DateOfBirth, StringFormat='DOB: {0:dd/MM/yyyy}'}" FontSize="13" TextColor="#4C6272" />
+                        <Label Text="{Binding Patient.Status}" FontSize="13" TextColor="#005EB8" FontAttributes="Bold" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Frame>
+
+            <!-- Allergies Alert -->
+            <Frame BackgroundColor="#FFF3CD" BorderColor="#FFB81C" CornerRadius="8" Padding="12"
+                   IsVisible="{Binding Patient.Allergies, Converter={StaticResource NullToBoolConverter}}">
+                <Label Text="{Binding Patient.Allergies, StringFormat='⚠️ Allergies: {0}'}"
+                       TextColor="#856404" FontAttributes="Bold" />
+            </Frame>
+
+            <!-- Contact Details -->
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Contact Details" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+                    <Label Text="{Binding Patient.Email, StringFormat='✉️ {0}'}" TextColor="#212B32" FontSize="14" />
+                    <Label Text="{Binding Patient.PhoneNumber, StringFormat='📞 {0}'}" TextColor="#212B32" FontSize="14" />
+                    <Label Text="{Binding Patient.MobileNumber, StringFormat='📱 {0}'}" TextColor="#212B32" FontSize="14" />
+                    <Label Text="{Binding Patient.AddressLine1}" TextColor="#212B32" FontSize="14" />
+                    <Label Text="{Binding Patient.City, StringFormat='{0}'}" TextColor="#212B32" FontSize="14" />
+                    <Label Text="{Binding Patient.Postcode}" TextColor="#212B32" FontSize="14" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- GP Details -->
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Registered GP" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+                    <Label Text="{Binding Patient.RegisteredGpName}" TextColor="#212B32" FontSize="14" />
+                    <Label Text="{Binding Patient.RegisteredGpPracticeName}" TextColor="#4C6272" FontSize="13" />
+                    <Label Text="{Binding Patient.RegisteredGpOdsCode, StringFormat='ODS: {0}'}" TextColor="#768692" FontSize="12" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Clinical Notes -->
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Clinical Notes" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+
+                    <!-- Add Note Form -->
+                    <VerticalStackLayout Spacing="8">
+                        <Entry Text="{Binding NewNoteTitle}" Placeholder="Note title" />
+                        <Editor Text="{Binding NewNoteContent}" Placeholder="Note content (SOAP format)"
+                                HeightRequest="80" />
+                        <Button Text="Add Note" Command="{Binding AddNoteCommand}"
+                                BackgroundColor="#007F3B" TextColor="White"
+                                CornerRadius="8" HeightRequest="40" FontSize="13" />
+                    </VerticalStackLayout>
+
+                    <CollectionView ItemsSource="{Binding Notes}" HeightRequest="220">
+                        <CollectionView.EmptyView>
+                            <Label Text="No clinical notes recorded" TextColor="#768692"
+                                   HorizontalOptions="Center" FontSize="13" />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:ClinicalNote">
+                                <VerticalStackLayout Padding="0,0,0,10" Spacing="3">
+                                    <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="#212B32" FontSize="14" />
+                                    <Label Text="{Binding AuthorName, StringFormat='By {0}'}" FontSize="12" TextColor="#4C6272" />
+                                    <Label Text="{Binding NoteDate, StringFormat='{0:dd/MM/yyyy}'}" FontSize="11" TextColor="#768692" />
+                                    <Label Text="{Binding Content}" FontSize="13" TextColor="#4C6272" MaxLines="2" />
+                                    <BoxView HeightRequest="1" Color="#E8EDEE" />
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Appointments -->
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Appointments" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+                    <CollectionView ItemsSource="{Binding Appointments}" HeightRequest="180">
+                        <CollectionView.EmptyView>
+                            <Label Text="No appointments" TextColor="#768692"
+                                   HorizontalOptions="Center" FontSize="13" />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:Appointment">
+                                <VerticalStackLayout Padding="0,0,0,8" Spacing="2">
+                                    <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="#212B32" FontSize="14" />
+                                    <Label Text="{Binding StartTime, StringFormat='{0:ddd d MMM yyyy HH:mm}'}" FontSize="12" TextColor="#4C6272" />
+                                    <Label Text="{Binding Status}" FontSize="11" TextColor="#005EB8" />
+                                    <BoxView HeightRequest="1" Color="#E8EDEE" />
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Prescriptions -->
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="16">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Prescriptions" FontSize="16" FontAttributes="Bold" TextColor="#212B32" />
+
+                    <!-- Add Prescription Form -->
+                    <VerticalStackLayout Spacing="8">
+                        <Entry Text="{Binding NewMedicationName}" Placeholder="Medication name" />
+                        <Entry Text="{Binding NewDosage}" Placeholder="Dosage (e.g. 500mg)" />
+                        <Entry Text="{Binding NewFrequency}" Placeholder="Frequency (e.g. Twice daily)" />
+                        <Button Text="Add Prescription" Command="{Binding AddPrescriptionCommand}"
+                                BackgroundColor="#005EB8" TextColor="White"
+                                CornerRadius="8" HeightRequest="40" FontSize="13" />
+                    </VerticalStackLayout>
+
+                    <CollectionView ItemsSource="{Binding Prescriptions}" HeightRequest="200">
+                        <CollectionView.EmptyView>
+                            <Label Text="No prescriptions" TextColor="#768692"
+                                   HorizontalOptions="Center" FontSize="13" />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:Prescription">
+                                <VerticalStackLayout Padding="0,0,0,8" Spacing="2">
+                                    <Label Text="{Binding MedicationName}" FontAttributes="Bold" TextColor="#212B32" FontSize="14" />
+                                    <Label Text="{Binding Dosage, StringFormat='{0}'}" FontSize="12" TextColor="#4C6272" />
+                                    <Label Text="{Binding Frequency}" FontSize="12" TextColor="#4C6272" />
+                                    <Label Text="{Binding Status}" FontSize="11" TextColor="#007F3B" />
+                                    <BoxView HeightRequest="1" Color="#E8EDEE" />
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Enable Portal Access -->
+            <Button Text="Enable Patient Portal Access" Command="{Binding EnablePortalAccessCommand}"
+                    BackgroundColor="#003087" TextColor="White" CornerRadius="8"
+                    FontSize="14" HeightRequest="48" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

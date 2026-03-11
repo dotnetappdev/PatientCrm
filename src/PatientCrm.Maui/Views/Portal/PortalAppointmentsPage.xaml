@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="PatientCrm.Maui.Views.Portal.PortalAppointmentsPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:PatientCrm.Maui.ViewModels.Portal"
+             xmlns:models="clr-namespace:PatientCrm.Maui.Models"
+             x:DataType="vm:PortalAppointmentsViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="#F0F4F5">
+
+    <RefreshView IsRefreshing="{Binding IsBusy}" Command="{Binding LoadCommand}">
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="16">
+                <Frame IsVisible="{Binding ErrorMessage, Converter={StaticResource NullToBoolConverter}}"
+                       BackgroundColor="#FDECEA" BorderColor="#DA291C" CornerRadius="8" Padding="12">
+                    <Label Text="{Binding ErrorMessage}" TextColor="#DA291C" />
+                </Frame>
+
+                <Label Text="Upcoming Appointments" FontSize="18" FontAttributes="Bold" TextColor="#212B32" />
+                <CollectionView ItemsSource="{Binding UpcomingAppointments}" HeightRequest="300">
+                    <CollectionView.EmptyView>
+                        <Label Text="No upcoming appointments" TextColor="#768692" HorizontalOptions="Center" FontSize="14" />
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:Appointment">
+                            <Frame BackgroundColor="White" CornerRadius="10" Padding="14" Margin="0,0,0,10" BorderColor="#E8EDEE">
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="{Binding Title}" FontAttributes="Bold" FontSize="15" TextColor="#212B32" />
+                                    <Label Text="{Binding StartTime, StringFormat='📅 {0:ddd d MMM yyyy HH:mm}'}" FontSize="13" TextColor="#005EB8" />
+                                    <Label Text="{Binding Reason}" FontSize="12" TextColor="#4C6272" />
+                                    <Label Text="{Binding DisciplineType}" FontSize="11" TextColor="#768692" />
+                                    <Label Text="{Binding VideoCallLink, StringFormat='🎥 Video: {0}'}"
+                                           FontSize="12" TextColor="#005EB8"
+                                           IsVisible="{Binding VideoCallLink, Converter={StaticResource NullToBoolConverter}}" />
+                                </VerticalStackLayout>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Label Text="Past Appointments" FontSize="18" FontAttributes="Bold" TextColor="#212B32" />
+                <CollectionView ItemsSource="{Binding PastAppointments}" HeightRequest="300">
+                    <CollectionView.EmptyView>
+                        <Label Text="No past appointments" TextColor="#768692" HorizontalOptions="Center" FontSize="14" />
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:Appointment">
+                            <Frame BackgroundColor="White" CornerRadius="10" Padding="14" Margin="0,0,0,10" BorderColor="#E8EDEE">
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="{Binding Title}" FontAttributes="Bold" FontSize="15" TextColor="#212B32" />
+                                    <Label Text="{Binding StartTime, StringFormat='📅 {0:ddd d MMM yyyy HH:mm}'}" FontSize="13" TextColor="#768692" />
+                                    <Label Text="{Binding Status}" FontSize="11" TextColor="#4C6272" FontAttributes="Bold" />
+                                </VerticalStackLayout>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>
