@@ -25,6 +25,8 @@ public class Appointment : BaseEntity
     public string? Location { get; set; }
     public string? Room { get; set; }
     public string? VideoCallLink { get; set; }
+    public string? VideoCallPasscode { get; set; }
+    public string? VideoCallPlatform { get; set; } // "GoogleMeet", "Zoom", "MicrosoftTeams", "AccuBook"
 
     public bool IsUrgent { get; set; }
     public bool PatientNotified { get; set; }

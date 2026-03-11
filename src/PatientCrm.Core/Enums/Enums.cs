@@ -204,3 +204,11 @@ public enum AdmissionStatus
     Deceased
 }
 
+
+public enum LetterStatus
+{
+    Draft,
+    Final,
+    Sent,
+    Archived
+}

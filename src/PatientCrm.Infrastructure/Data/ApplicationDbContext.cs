@@ -29,6 +29,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<Ward> Wards => Set<Ward>();
     public DbSet<PatientAdmission> PatientAdmissions => Set<PatientAdmission>();
+    public DbSet<Letter> Letters => Set<Letter>();
+    public DbSet<LetterTemplate> LetterTemplates => Set<LetterTemplate>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -272,6 +274,40 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
              .HasForeignKey(a => a.ConsultantId)
              .IsRequired(false)
              .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Letter
+        builder.Entity<Letter>(e =>
+        {
+            e.HasIndex(l => l.PatientId);
+            e.HasIndex(l => l.TenantId);
+            e.HasQueryFilter(l => !l.IsDeleted);
+            e.Property(l => l.Subject).HasMaxLength(500);
+            e.HasOne(l => l.Patient)
+             .WithMany()
+             .HasForeignKey(l => l.PatientId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(l => l.Author)
+             .WithMany()
+             .HasForeignKey(l => l.AuthorId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(l => l.Template)
+             .WithMany()
+             .HasForeignKey(l => l.TemplateId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(l => l.Department)
+             .WithMany()
+             .HasForeignKey(l => l.DepartmentId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // LetterTemplate
+        builder.Entity<LetterTemplate>(e =>
+        {
+            e.HasQueryFilter(lt => !lt.IsDeleted);
+            e.Property(lt => lt.Title).HasMaxLength(200);
         });
     }
 }

@@ -96,4 +96,17 @@ public class PatientPortalController : ControllerBase
         if (patient == null) return NotFound();
         return Ok(patient.Alerts.OrderByDescending(a => a.CreatedAt));
     }
+
+    // GET /api/portal/me/letters  — patient-visible letters only
+    [HttpGet("me/letters")]
+    public async Task<IActionResult> GetMyLetters(CancellationToken ct)
+    {
+        var patient = await GetMyPatientAsync(ct);
+        if (patient == null) return NotFound();
+        var letters = await _context.Letters
+            .Where(l => l.PatientId == patient.Id && l.IsPatientVisible && !l.IsDeleted)
+            .OrderByDescending(l => l.LetterDate)
+            .ToListAsync(ct);
+        return Ok(letters);
+    }
 }

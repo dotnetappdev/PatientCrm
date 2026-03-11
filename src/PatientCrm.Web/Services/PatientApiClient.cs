@@ -234,6 +234,14 @@ public class PatientApiClient
         return response.IsSuccessStatusCode;
     }
 
+    public async Task<VideoLinkResult?> GenerateVideoLinkAsync(Guid appointmentId, string platform, bool enablePasscode)
+    {
+        SetAuthHeader();
+        var response = await _http.PostAsJsonAsync($"api/appointments/{appointmentId}/generate-video-link", new { Platform = platform, EnablePasscode = enablePasscode });
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadFromJsonAsync<VideoLinkResult>();
+    }
+
     // Prescriptions CRUD
 
     public async Task<Prescription?> CreatePrescriptionAsync(Prescription prescription)
@@ -395,6 +403,121 @@ public class PatientApiClient
         return response.IsSuccessStatusCode;
     }
 
+    // Letters
+
+    public async Task<List<Letter>?> GetLettersAsync(Guid? patientId = null)
+    {
+        SetAuthHeader();
+        var url = "api/letters";
+        if (patientId.HasValue) url += $"?patientId={patientId}";
+        return await _http.GetFromJsonAsync<List<Letter>>(url);
+    }
+
+    public async Task<Letter?> GetLetterAsync(Guid id)
+    {
+        SetAuthHeader();
+        return await _http.GetFromJsonAsync<Letter>($"api/letters/{id}");
+    }
+
+    public async Task<Letter?> CreateLetterAsync(Letter letter)
+    {
+        SetAuthHeader();
+        var response = await _http.PostAsJsonAsync("api/letters", letter);
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadFromJsonAsync<Letter>();
+    }
+
+    public async Task<bool> UpdateLetterAsync(Guid id, Letter letter)
+    {
+        SetAuthHeader();
+        var response = await _http.PutAsJsonAsync($"api/letters/{id}", letter);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DeleteLetterAsync(Guid id)
+    {
+        SetAuthHeader();
+        var response = await _http.DeleteAsync($"api/letters/{id}");
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> SendLetterAsync(Guid id)
+    {
+        SetAuthHeader();
+        var response = await _http.PostAsync($"api/letters/{id}/send", null);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<List<LetterTemplate>?> GetLetterTemplatesAsync()
+    {
+        SetAuthHeader();
+        return await _http.GetFromJsonAsync<List<LetterTemplate>>("api/letters/templates");
+    }
+
+    public async Task<LetterTemplate?> CreateLetterTemplateAsync(LetterTemplate template)
+    {
+        SetAuthHeader();
+        var response = await _http.PostAsJsonAsync("api/letters/templates", template);
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadFromJsonAsync<LetterTemplate>();
+    }
+
+    public async Task<bool> UpdateLetterTemplateAsync(Guid id, LetterTemplate template)
+    {
+        SetAuthHeader();
+        var response = await _http.PutAsJsonAsync($"api/letters/templates/{id}", template);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DeleteLetterTemplateAsync(Guid id)
+    {
+        SetAuthHeader();
+        var response = await _http.DeleteAsync($"api/letters/templates/{id}");
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<List<Letter>?> GetMyPortalLettersAsync()
+    {
+        SetAuthHeader();
+        return await _http.GetFromJsonAsync<List<Letter>>("api/portal/me/letters");
+    }
+
+    // Dental
+
+    public async Task<DentalRecord?> GetDentalRecordAsync(Guid patientId)
+    {
+        SetAuthHeader();
+        return await _http.GetFromJsonAsync<DentalRecord>($"api/dental/{patientId}");
+    }
+
+    public async Task<bool> UpdateDentalRecordAsync(Guid id, DentalRecord record)
+    {
+        SetAuthHeader();
+        var response = await _http.PutAsJsonAsync($"api/dental/{id}", record);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<List<ToothRecord>?> GetToothRecordsAsync(Guid patientId)
+    {
+        SetAuthHeader();
+        return await _http.GetFromJsonAsync<List<ToothRecord>>($"api/dental/{patientId}/teeth");
+    }
+
+    public async Task<ToothRecord?> SaveToothRecordAsync(Guid patientId, ToothRecord tooth)
+    {
+        SetAuthHeader();
+        var response = await _http.PostAsJsonAsync($"api/dental/{patientId}/teeth", tooth);
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadFromJsonAsync<ToothRecord>();
+    }
+
+    public async Task<bool> UpdateToothRecordAsync(Guid id, ToothRecord tooth)
+    {
+        SetAuthHeader();
+        var response = await _http.PutAsJsonAsync($"api/dental/tooth/{id}", tooth);
+        return response.IsSuccessStatusCode;
+    }
+
     // Patient portal — Patient role only
 
     public async Task<Patient?> GetMyPortalRecordAsync()
@@ -405,6 +528,8 @@ public class PatientApiClient
 }
 
 // DTOs for API responses
+
+public record VideoLinkResult(string? Link, string? Passcode, string? Platform);
 
 public class LoginResult
 {

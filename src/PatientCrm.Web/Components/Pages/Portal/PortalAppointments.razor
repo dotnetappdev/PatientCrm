@@ -62,7 +62,13 @@ else
                         </td>
                         <td style="font-size: 0.8125rem;">
                             @if (!string.IsNullOrEmpty(a.VideoCallLink))
-                            { <a href="@a.VideoCallLink" target="_blank" class="btn btn-sm btn-primary">Join Video Call</a> }
+                            {
+                                <a href="@a.VideoCallLink" target="_blank" class="btn btn-sm btn-primary">Join Video Call</a>
+                                @if (!string.IsNullOrEmpty(a.VideoCallPasscode))
+                                {
+                                    <div class="small text-muted">Passcode: @a.VideoCallPasscode</div>
+                                }
+                            }
                             else
                             { @(a.Location ?? "—") }
                         </td>

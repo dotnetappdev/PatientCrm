@@ -153,6 +153,31 @@ Settings page for SMTP email notifications, Twilio/GOV.UK Notify SMS, and Google
 
 ![Admin Settings](docs/screenshots/20_admin_settings.png)
 
+### Letters CMS — Clinical Correspondence
+Letter list with status badges, create/edit modal with template selector, HTML body editor and letterhead preview.
+
+![Letters](docs/screenshots/28_letters.png)
+
+### Letter View — NHS Letterhead Layout
+Full letterhead with practice logo, address block, doctor name and title, subject line, body HTML and print/PDF export.
+
+![Letter View](docs/screenshots/29_letter_view.png)
+
+### Patient Portal — My Letters
+Patient's own visible letters with letterhead view and print button.
+
+![Portal Letters](docs/screenshots/30_portal_letters.png)
+
+### Patient Record — Interactive SVG Tooth Chart
+Colour-coded 32-tooth SVG chart with click-to-edit modal, filling/crown material selectors, BPE grid and dental history summary.
+
+![Dental Chart](docs/screenshots/31_dental_chart.png)
+
+### Book Appointment — Video Link Generator
+Platform selector (Google Meet, Zoom, Microsoft Teams, AccuBook/NHS Video) with optional passcode generation.
+
+![Video Link](docs/screenshots/32_video_link.png)
+
 ---
 
 ## Overview
@@ -206,9 +231,11 @@ The solution contains four projects:
 - Multi-tenant patient registration with NHS/HSCNI identifiers
 - GP Records with QOF registers (diabetes, hypertension, AF, asthma, COPD, mental health)
 - Dental Records with charting, BPE scores and treatment history
+- **Interactive SVG Tooth Chart**: colour-coded 32-tooth chart (healthy, decay, filled, crown, root canal, implant, abscess, missing/extracted, watch & wait) with click-to-edit modal for all tooth flags, filling/crown material, treatment plan, review date, BPE sextant grid
 - Clinical notes using SOAP format with SNOMED CT coding
 - Prescription management with repeat prescription support and one-click reorder (with repeat count tracking)
-- Appointment scheduling with telephone, in-person and video types
+- **Appointment scheduling** with telephone, in-person and video types; **video link generator** with platform selector (Google Meet, Zoom, Microsoft Teams, AccuBook/NHS Video) and optional 6-digit passcode
+- **Letters CMS**: create, edit, send and archive clinical correspondence with HTML rich-text body, NHS letterhead layout (practice logo, name, address, doctor title), template library (Referral, Discharge, Appointment, Results, General), patient-visibility flag and print/PDF export
 - Patient images and attachments (X-rays, reports, referral letters)
 - Patient alerts with severity levels (Critical, High, Medium, Low)
 - **Hospital departments** with ward management: 25 specialty types (Cardiology, Neurology, Oncology, Orthopaedics, A&E, ICU and more)
@@ -220,9 +247,10 @@ The solution contains four projects:
 
 - Patients log in with the `Patient` role and see only their own data — a dedicated `/portal/*` area with a separate sidebar navigation
 - **My Dashboard**: upcoming appointments, active medications, stats, allergy banner, GP details
-- **My Appointments**: upcoming and past appointments with video call join links
+- **My Appointments**: upcoming and past appointments with video call join links and passcode display
 - **My Medications**: full prescription history, dosage, instructions, repeat count; one-click **Request Repeat** button
 - **My Notes**: non-confidential clinical notes only — a clear notice explains that some notes may be kept private by the clinician
+- **My Letters**: patient-visible clinical correspondence with NHS letterhead view and print/PDF export
 - **My Profile**: full personal details (NHS number, contact, GP registration, emergency contact, blood group, consent preferences) — read-only
 - Admin/GP can enable portal access per patient with a single click from the patient record (**🔗 Enable Portal Access** button) which creates an Identity account with the `Patient` role linked to the patient record
 

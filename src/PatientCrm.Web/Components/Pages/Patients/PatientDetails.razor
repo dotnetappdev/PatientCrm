@@ -77,7 +77,7 @@ else
         @if (patient.GpRecord != null)
         { <a class="tab-item @(activeTab == "gp" ? "active" : "")" href="#" @onclick="@(() => activeTab = "gp")" @onclick:preventDefault>GP Record</a> }
         @if (patient.DentalRecord != null)
-        { <a class="tab-item @(activeTab == "dental" ? "active" : "")" href="#" @onclick="@(() => activeTab = "dental")" @onclick:preventDefault>Dental</a> }
+        { <a class="tab-item @(activeTab == "dental" ? "active" : "")" href="#" @onclick="@(async () => { activeTab = "dental"; await LoadDentalDataAsync(); })" @onclick:preventDefault>Dental</a> }
     </div>
 
     <!-- Overview Tab -->
@@ -441,6 +441,137 @@ else
         </div>
     }
 
+    <!-- Dental Chart Tab -->
+    @if (activeTab == "dental")
+    {
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div class="d-flex justify-between" style="margin-bottom: 1rem;">
+                <h3 class="card-title">Interactive Tooth Chart</h3>
+                <button class="btn btn-sm btn-secondary" @onclick="LoadDentalDataAsync">↺ Refresh</button>
+            </div>
+
+            <!-- Legend -->
+            <div class="d-flex gap-2" style="flex-wrap: wrap; margin-bottom: 1rem; font-size: 0.8rem;">
+                <span><span style="display:inline-block; width:12px; height:12px; background:#f9fafb; border:1px solid #ccc; border-radius:2px;"></span> Healthy</span>
+                <span><span style="display:inline-block; width:12px; height:12px; background:#6b7280; border-radius:2px;"></span> Missing/Extracted</span>
+                <span><span style="display:inline-block; width:12px; height:12px; background:#ef4444; border-radius:2px;"></span> Decay</span>
+                <span><span style="display:inline-block; width:12px; height:12px; background:#fbbf24; border-radius:2px;"></span> Filled</span>
+                <span><span style="display:inline-block; width:12px; height:12px; background:#3b82f6; border-radius:2px;"></span> Crown</span>
+                <span><span style="display:inline-block; width:12px; height:12px; background:#8b5cf6; border-radius:2px;"></span> Root Canal</span>
+                <span><span style="display:inline-block; width:12px; height:12px; background:#14b8a6; border-radius:2px;"></span> Implant</span>
+                <span><span style="display:inline-block; width:12px; height:12px; background:#f97316; border-radius:2px;"></span> Abscess</span>
+                <span><span style="display:inline-block; width:12px; height:12px; background:#fef08a; border-radius:2px;"></span> Watch &amp; Wait</span>
+            </div>
+
+            <!-- SVG Tooth Chart -->
+            <svg width="700" height="200" viewBox="0 0 700 200" style="display:block; margin: 0 auto;">
+                <!-- Upper arch label -->
+                <text x="10" y="45" font-size="11" fill="#6b7280">Upper</text>
+                <!-- Lower arch label -->
+                <text x="10" y="155" font-size="11" fill="#6b7280">Lower</text>
+
+                @{
+                    // Upper arch: teeth 1-16 (UR 1-8, UL 9-16), displayed right to left for UR then left to right for UL
+                    // Row y=20, tooth height=40
+                    // Lower arch: teeth 17-32 (LL 17-24, LR 25-32)
+                    // Row y=130
+                    int[] upperTeeth = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16];
+                    int[] lowerTeeth = [32,31,30,29,28,27,26,25,24,23,22,21,20,19,18,17];
+                    int startX = 40;
+                    int toothW = 38;
+                    int toothH = 40;
+                    int upperY = 20;
+                    int lowerY = 130;
+                    int gap = 2;
+                }
+
+                @for (int i = 0; i < upperTeeth.Length; i++)
+                {
+                    var tNum = upperTeeth[i];
+                    var x = startX + i * (toothW + gap);
+                    var tooth = toothRecords.FirstOrDefault(t => t.ToothNumber == tNum);
+                    var fill = GetToothFill(tooth);
+                    var capturedNum = tNum;
+                    <g @onclick="() => OpenToothModal(capturedNum)" style="cursor:pointer;">
+                        <rect x="@x" y="@upperY" width="@toothW" height="@toothH" fill="@fill" stroke="#94a3b8" stroke-width="1" rx="4"/>
+                        <text x="@(x + toothW/2)" y="@(upperY + toothH + 14)" font-size="9" text-anchor="middle" fill="#6b7280">@tNum</text>
+                        @if (tooth?.IsMissing == true || tooth?.IsExtracted == true)
+                        {
+                            <line x1="@(x+6)" y1="@(upperY+6)" x2="@(x+toothW-6)" y2="@(upperY+toothH-6)" stroke="#374151" stroke-width="2"/>
+                            <line x1="@(x+toothW-6)" y1="@(upperY+6)" x2="@(x+6)" y2="@(upperY+toothH-6)" stroke="#374151" stroke-width="2"/>
+                        }
+                    </g>
+                }
+
+                @for (int i = 0; i < lowerTeeth.Length; i++)
+                {
+                    var tNum = lowerTeeth[i];
+                    var x = startX + i * (toothW + gap);
+                    var tooth = toothRecords.FirstOrDefault(t => t.ToothNumber == tNum);
+                    var fill = GetToothFill(tooth);
+                    var capturedNum = tNum;
+                    <g @onclick="() => OpenToothModal(capturedNum)" style="cursor:pointer;">
+                        <text x="@(x + toothW/2)" y="@(lowerY - 4)" font-size="9" text-anchor="middle" fill="#6b7280">@tNum</text>
+                        <rect x="@x" y="@lowerY" width="@toothW" height="@toothH" fill="@fill" stroke="#94a3b8" stroke-width="1" rx="4"/>
+                        @if (tooth?.IsMissing == true || tooth?.IsExtracted == true)
+                        {
+                            <line x1="@(x+6)" y1="@(lowerY+6)" x2="@(x+toothW-6)" y2="@(lowerY+toothH-6)" stroke="#374151" stroke-width="2"/>
+                            <line x1="@(x+toothW-6)" y1="@(lowerY+6)" x2="@(x+6)" y2="@(lowerY+toothH-6)" stroke="#374151" stroke-width="2"/>
+                        }
+                    </g>
+                }
+
+                <!-- Midline -->
+                <line x1="350" y1="10" x2="350" y2="190" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4"/>
+            </svg>
+        </div>
+
+        <!-- BPE Grid -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <h3 class="card-title" style="margin-bottom: 1rem;">Basic Periodontal Examination (BPE)</h3>
+            @if (dentalRecord != null)
+            {
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    @{
+                        var bpe = dentalRecord.BasicPeriodontalExamination?.Split(',') ?? new string[6];
+                        string[] sextantLabels = ["UR", "UA", "UL", "LL", "LA", "LR"];
+                    }
+                    @for (int s = 0; s < 6; s++)
+                    {
+                        var label = sextantLabels[s];
+                        var val = s < bpe.Length ? (bpe[s]?.Trim() ?? "") : "";
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.75rem; color: #6b7280; margin-bottom: 0.25rem;">@label</div>
+                            <div style="width: 48px; height: 48px; border: 2px solid #94a3b8; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; font-weight: 700; background: var(--card-bg);">
+                                @val
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Dental History Summary -->
+        @if (dentalRecord != null)
+        {
+            <div class="card">
+                <h3 class="card-title" style="margin-bottom: 1rem;">Dental History</h3>
+                <div class="detail-grid">
+                    @if (dentalRecord.LastExaminationDate.HasValue)
+                    { <div class="detail-label">Last Exam</div><div class="detail-value">@dentalRecord.LastExaminationDate.Value.ToString("dd MMM yyyy")</div> }
+                    @if (dentalRecord.LastHygieneAppointment.HasValue)
+                    { <div class="detail-label">Last Hygiene</div><div class="detail-value">@dentalRecord.LastHygieneAppointment.Value.ToString("dd MMM yyyy")</div> }
+                    @if (dentalRecord.LastXRayDate.HasValue)
+                    { <div class="detail-label">Last X-Ray</div><div class="detail-value">@dentalRecord.LastXRayDate.Value.ToString("dd MMM yyyy")</div> }
+                    @if (!string.IsNullOrEmpty(dentalRecord.PeriodontalStatus))
+                    { <div class="detail-label">Periodontal Status</div><div class="detail-value">@dentalRecord.PeriodontalStatus</div> }
+                    @if (!string.IsNullOrEmpty(dentalRecord.OralHygieneSummary))
+                    { <div class="detail-label">Oral Hygiene</div><div class="detail-value">@dentalRecord.OralHygieneSummary</div> }
+                </div>
+            </div>
+        }
+    }
+
     <!-- Add Note Modal -->
     @if (showAddNote)
     {
@@ -667,6 +798,80 @@ else
             </div>
         </div>
     }
+
+    <!-- Tooth Edit Modal -->
+    @if (showToothModal && editingTooth != null)
+    {
+        <div class="modal-backdrop open">
+            <div class="modal" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <h3 class="modal-title">Tooth @editingTooth.ToothNumber — @(editingTooth.ToothName ?? "Edit")</h3>
+                    <button class="btn-icon" @onclick="CloseToothModal">&#x2715;</button>
+                </div>
+
+                <div class="form-row" style="flex-wrap: wrap; gap: 0.5rem;">
+                    @foreach (var flag in ToothFlags)
+                    {
+                        <label style="display:flex; align-items:center; gap:0.25rem; min-width:160px; cursor:pointer; font-size:0.875rem;">
+                            <input type="checkbox" checked="@GetToothFlag(flag)" @onchange="e => SetToothFlag(flag, (bool)(e.Value ?? false))" />
+                            @flag
+                        </label>
+                    }
+                </div>
+
+                <div class="form-row" style="margin-top: 0.75rem;">
+                    <div class="form-group">
+                        <label class="form-label">Filling Type</label>
+                        <select class="form-control" @bind="editingTooth.FillingType">
+                            <option value="">— None —</option>
+                            <option value="Amalgam">Amalgam</option>
+                            <option value="Composite">Composite</option>
+                            <option value="GlassIonomer">Glass Ionomer</option>
+                            <option value="Gold">Gold</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Crown Material</label>
+                        <select class="form-control" @bind="editingTooth.CrownMaterial">
+                            <option value="">— None —</option>
+                            <option value="PFM">PFM</option>
+                            <option value="ZirconiaAll-Ceramic">Zirconia All-Ceramic</option>
+                            <option value="Metal">Metal</option>
+                            <option value="EMax">E.max</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-control" rows="2" @bind="editingTooth.Notes" placeholder="Clinical notes..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Treatment Plan</label>
+                    <textarea class="form-control" rows="2" @bind="editingTooth.TreatmentPlan" placeholder="Planned treatment..."></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Treatment Date</label>
+                        <input type="date" class="form-control" @bind="editingTooth.TreatmentDate" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Next Review Date</label>
+                        <input type="date" class="form-control" @bind="editingTooth.NextReviewDate" />
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(toothSaveError))
+                { <div class="alert alert-danger">@toothSaveError</div> }
+
+                <div class="d-flex justify-between" style="margin-top: 1rem;">
+                    <button class="btn btn-secondary" @onclick="CloseToothModal">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveToothAsync">Save Tooth</button>
+                </div>
+            </div>
+        </div>
+    }
 }
 
 @code {
@@ -836,5 +1041,129 @@ else
             patient = await Api.GetPatientAsync(Id);
         }
         else Notifications.SetError("Failed to enable portal access. Ensure the patient has an email address on record.");
+    }
+
+    // Dental chart state
+    private DentalRecord? dentalRecord;
+    private List<ToothRecord> toothRecords = new();
+    private bool showToothModal;
+    private ToothRecord? editingTooth;
+    private string? toothSaveError;
+
+    private static readonly string[] ToothFlags =
+    [
+        "IsMissing", "IsExtracted", "HasDecay", "HasFilling", "HasCrown",
+        "HasRootCanal", "HasAbscess", "HasImplant", "HasFracture",
+        "HasSensitivity", "HasGumDisease", "HasVeneer", "HasBridge",
+        "HasChipping", "HasWearing", "IsWatchAndWait"
+    ];
+
+    private async Task LoadDentalDataAsync()
+    {
+        if (patient == null) return;
+        dentalRecord = await Api.GetDentalRecordAsync(patient.Id);
+        toothRecords = await Api.GetToothRecordsAsync(patient.Id) ?? new();
+    }
+
+    private void OpenToothModal(int toothNumber)
+    {
+        var existing = toothRecords.FirstOrDefault(t => t.ToothNumber == toothNumber);
+        editingTooth = existing != null
+            ? new ToothRecord
+            {
+                Id = existing.Id, TenantId = existing.TenantId, DentalRecordId = existing.DentalRecordId,
+                ToothNumber = existing.ToothNumber, ToothName = existing.ToothName, IsPrimary = existing.IsPrimary,
+                IsMissing = existing.IsMissing, IsExtracted = existing.IsExtracted, HasDecay = existing.HasDecay,
+                HasFilling = existing.HasFilling, FillingType = existing.FillingType, HasCrown = existing.HasCrown,
+                CrownMaterial = existing.CrownMaterial, HasBridge = existing.HasBridge, HasVeneer = existing.HasVeneer,
+                HasImplant = existing.HasImplant, HasRootCanal = existing.HasRootCanal, HasAbscess = existing.HasAbscess,
+                HasFracture = existing.HasFracture, HasSensitivity = existing.HasSensitivity,
+                HasGumDisease = existing.HasGumDisease, HasChipping = existing.HasChipping, HasWearing = existing.HasWearing,
+                HasOverhang = existing.HasOverhang, IsWatchAndWait = existing.IsWatchAndWait,
+                Surfaces = existing.Surfaces, Notes = existing.Notes, TreatmentPlan = existing.TreatmentPlan,
+                TreatmentDate = existing.TreatmentDate, NextReviewDate = existing.NextReviewDate
+            }
+            : new ToothRecord { ToothNumber = toothNumber };
+        toothSaveError = null;
+        showToothModal = true;
+    }
+
+    private void CloseToothModal()
+    {
+        showToothModal = false;
+        editingTooth = null;
+    }
+
+    private bool GetToothFlag(string flag) => flag switch
+    {
+        "IsMissing" => editingTooth?.IsMissing ?? false,
+        "IsExtracted" => editingTooth?.IsExtracted ?? false,
+        "HasDecay" => editingTooth?.HasDecay ?? false,
+        "HasFilling" => editingTooth?.HasFilling ?? false,
+        "HasCrown" => editingTooth?.HasCrown ?? false,
+        "HasRootCanal" => editingTooth?.HasRootCanal ?? false,
+        "HasAbscess" => editingTooth?.HasAbscess ?? false,
+        "HasImplant" => editingTooth?.HasImplant ?? false,
+        "HasFracture" => editingTooth?.HasFracture ?? false,
+        "HasSensitivity" => editingTooth?.HasSensitivity ?? false,
+        "HasGumDisease" => editingTooth?.HasGumDisease ?? false,
+        "HasVeneer" => editingTooth?.HasVeneer ?? false,
+        "HasBridge" => editingTooth?.HasBridge ?? false,
+        "HasChipping" => editingTooth?.HasChipping ?? false,
+        "HasWearing" => editingTooth?.HasWearing ?? false,
+        "IsWatchAndWait" => editingTooth?.IsWatchAndWait ?? false,
+        _ => false
+    };
+
+    private void SetToothFlag(string flag, bool value)
+    {
+        if (editingTooth == null) return;
+        switch (flag)
+        {
+            case "IsMissing": editingTooth.IsMissing = value; break;
+            case "IsExtracted": editingTooth.IsExtracted = value; break;
+            case "HasDecay": editingTooth.HasDecay = value; break;
+            case "HasFilling": editingTooth.HasFilling = value; break;
+            case "HasCrown": editingTooth.HasCrown = value; break;
+            case "HasRootCanal": editingTooth.HasRootCanal = value; break;
+            case "HasAbscess": editingTooth.HasAbscess = value; break;
+            case "HasImplant": editingTooth.HasImplant = value; break;
+            case "HasFracture": editingTooth.HasFracture = value; break;
+            case "HasSensitivity": editingTooth.HasSensitivity = value; break;
+            case "HasGumDisease": editingTooth.HasGumDisease = value; break;
+            case "HasVeneer": editingTooth.HasVeneer = value; break;
+            case "HasBridge": editingTooth.HasBridge = value; break;
+            case "HasChipping": editingTooth.HasChipping = value; break;
+            case "HasWearing": editingTooth.HasWearing = value; break;
+            case "IsWatchAndWait": editingTooth.IsWatchAndWait = value; break;
+        }
+    }
+
+    private async Task SaveToothAsync()
+    {
+        if (editingTooth == null || patient == null) return;
+        toothSaveError = null;
+        var result = await Api.SaveToothRecordAsync(patient.Id, editingTooth);
+        if (result != null)
+        {
+            Notifications.SetSuccess($"Tooth {editingTooth.ToothNumber} saved.");
+            toothRecords = await Api.GetToothRecordsAsync(patient.Id) ?? new();
+            CloseToothModal();
+        }
+        else toothSaveError = "Failed to save tooth record.";
+    }
+
+    private static string GetToothFill(ToothRecord? tooth)
+    {
+        if (tooth == null) return "#f9fafb";
+        if (tooth.IsMissing || tooth.IsExtracted) return "#6b7280";
+        if (tooth.HasAbscess) return "#f97316";
+        if (tooth.HasDecay) return "#ef4444";
+        if (tooth.HasRootCanal) return "#8b5cf6";
+        if (tooth.HasCrown) return "#3b82f6";
+        if (tooth.HasImplant) return "#14b8a6";
+        if (tooth.HasFilling) return "#fbbf24";
+        if (tooth.IsWatchAndWait) return "#fef08a";
+        return "#f9fafb";
     }
 }

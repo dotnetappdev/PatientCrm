@@ -22,6 +22,8 @@ public static class DatabaseSeeder
 
         await SeedPatientPortalUsersAsync(context, userManager, tenants);
 
+        await SeedLetterTemplatesAsync(context, tenants);
+
         await context.SaveChangesAsync();
     }
 
@@ -1106,6 +1108,111 @@ public static class DatabaseSeeder
             }
         }
 
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedLetterTemplatesAsync(ApplicationDbContext context, List<Tenant> tenants)
+    {
+        if (await context.LetterTemplates.AnyAsync()) return;
+
+        var nhsTenant = tenants.First(t => t.TenantType == TenantType.NhsEngland && t.ClientType == ClientType.GpPractice);
+
+        var templates = new List<LetterTemplate>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(), TenantId = nhsTenant.Id,
+                Title = "GP Referral Letter",
+                Category = "Referral",
+                Subject = "Urgent Referral – {{FirstName}} {{LastName}} (NHS {{NhsNumber}})",
+                Body = """
+<p>Dear Colleague,</p>
+<p>I am writing to refer <strong>{{FirstName}} {{LastName}}</strong>, date of birth {{DateOfBirth}}, NHS Number {{NhsNumber}}, who is registered at our practice.</p>
+<p><strong>Reason for Referral:</strong><br/>Please insert clinical details here.</p>
+<p><strong>Current Medications:</strong><br/>Please insert current medications here.</p>
+<p><strong>Relevant History:</strong><br/>Please insert relevant history here.</p>
+<p>I would be grateful for your assessment and management. Please do not hesitate to contact me should you require further information.</p>
+<p>Yours sincerely,</p>
+<p>{{DoctorName}}<br/>{{DepartmentName}}</p>
+""",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(), TenantId = nhsTenant.Id,
+                Title = "Discharge Summary",
+                Category = "Discharge",
+                Subject = "Discharge Summary – {{FirstName}} {{LastName}}",
+                Body = """
+<p>Dear Dr {{RegisteredGP}},</p>
+<p>I am writing to inform you that your patient <strong>{{FirstName}} {{LastName}}</strong> (NHS: {{NhsNumber}}) was discharged from our care on {{Date}}.</p>
+<p><strong>Admission Diagnosis:</strong><br/>Please insert diagnosis here.</p>
+<p><strong>Procedures Performed:</strong><br/>Please insert procedures here.</p>
+<p><strong>Discharge Medications:</strong><br/>Please insert discharge medications here.</p>
+<p><strong>Follow-up Arrangements:</strong><br/>Please insert follow-up plan here.</p>
+<p>Yours sincerely,</p>
+<p>{{DoctorName}}<br/>{{DepartmentName}}</p>
+""",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(), TenantId = nhsTenant.Id,
+                Title = "Appointment Confirmation",
+                Category = "Appointment",
+                Subject = "Appointment Confirmation – {{FirstName}} {{LastName}}",
+                Body = """
+<p>Dear {{FirstName}},</p>
+<p>We are writing to confirm your appointment at {{PracticeName}}.</p>
+<p><strong>Date:</strong> {{AppointmentDate}}<br/>
+<strong>Time:</strong> {{AppointmentTime}}<br/>
+<strong>Clinician:</strong> {{DoctorName}}<br/>
+<strong>Location:</strong> {{PracticeAddress}}</p>
+<p>Please bring your NHS card and a list of current medications. If you are unable to attend, please contact us at least 24 hours in advance so we can offer the appointment to another patient.</p>
+<p>Kind regards,</p>
+<p>{{PracticeName}}</p>
+""",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(), TenantId = nhsTenant.Id,
+                Title = "Test Results Letter",
+                Category = "Results",
+                Subject = "Test Results – {{FirstName}} {{LastName}} (NHS {{NhsNumber}})",
+                Body = """
+<p>Dear {{FirstName}},</p>
+<p>I am writing regarding the results of your recent tests.</p>
+<p><strong>Test Results Summary:</strong><br/>Please insert results here.</p>
+<p><strong>Our Recommendation:</strong><br/>Please insert recommendations here.</p>
+<p>If you have any concerns or questions, please do not hesitate to contact the practice.</p>
+<p>Yours sincerely,</p>
+<p>{{DoctorName}}<br/>{{DepartmentName}}<br/>{{PracticeName}}</p>
+""",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(), TenantId = nhsTenant.Id,
+                Title = "Specialist Clinic Letter",
+                Category = "General",
+                Subject = "Specialist Clinic Review – {{FirstName}} {{LastName}}",
+                Body = """
+<p>Dear {{FirstName}} {{LastName}},</p>
+<p>Thank you for attending the {{DepartmentName}} clinic on {{Date}}.</p>
+<p><strong>Clinical Assessment:</strong><br/>Please insert clinical assessment here.</p>
+<p><strong>Management Plan:</strong><br/>Please insert management plan here.</p>
+<p><strong>Medications Commenced / Changed:</strong><br/>Please insert medication changes here.</p>
+<p><strong>Follow-up:</strong><br/>Please insert follow-up plan here.</p>
+<p>A copy of this letter has been sent to your GP.</p>
+<p>Yours sincerely,</p>
+<p>{{DoctorName}}<br/>{{DepartmentName}}</p>
+""",
+                IsActive = true
+            }
+        };
+
+        context.LetterTemplates.AddRange(templates);
         await context.SaveChangesAsync();
     }
 }
