@@ -54,12 +54,12 @@ public class AuthService : IAuthService
         return result;
     }
 
-    public async Task LogoutAsync()
+    public Task LogoutAsync()
     {
         SecureStorage.Remove(TokenKey);
         SecureStorage.Remove(UserKey);
         _currentUser = null;
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     public async Task<string?> GetTokenAsync()

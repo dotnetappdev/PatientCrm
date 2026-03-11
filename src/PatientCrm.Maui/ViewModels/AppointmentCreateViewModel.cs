@@ -9,7 +9,7 @@ public partial class AppointmentCreateViewModel : BaseViewModel
 {
     private readonly ApiService _api;
 
-    [ObservableProperty] private string _title2 = string.Empty;
+    [ObservableProperty] private string _appointmentTitle = string.Empty;
     [ObservableProperty] private AppointmentType _appointmentType = AppointmentType.InPerson;
     [ObservableProperty] private DisciplineType _disciplineType = DisciplineType.GP;
     [ObservableProperty] private AppointmentStatus _status = AppointmentStatus.Scheduled;
@@ -32,7 +32,7 @@ public partial class AppointmentCreateViewModel : BaseViewModel
     [RelayCommand]
     private async Task SaveAsync()
     {
-        if (string.IsNullOrWhiteSpace(Title2))
+        if (string.IsNullOrWhiteSpace(AppointmentTitle))
         {
             SetError("Please enter an appointment title.");
             return;
@@ -45,7 +45,7 @@ public partial class AppointmentCreateViewModel : BaseViewModel
             var start = Date.Date.Add(StartTime);
             var appointment = new Appointment
             {
-                Title = Title2,
+                Title = AppointmentTitle,
                 AppointmentType = AppointmentType,
                 DisciplineType = DisciplineType,
                 Status = Status,
