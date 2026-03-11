@@ -8,11 +8,36 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Users</h1>
-        <p class="page-subtitle">@users.Count registered users</p>
+        <p class="page-subtitle">@allUsers.Count registered users</p>
     </div>
+    <a href="/admin/users/create" class="btn btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Create User
+    </a>
 </div>
 
 <div class="table-container">
+    <div class="table-header">
+        <div class="d-flex gap-2" style="flex: 1; flex-wrap: wrap;">
+            <div style="position: relative; flex: 1; max-width: 320px;">
+                <svg style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" @bind="searchText" @bind:event="oninput" @onkeydown="HandleKey"
+                       placeholder="Search by name, email, organisation..." class="form-control" style="padding-left: 2.25rem;" />
+            </div>
+            <select class="form-control" style="max-width: 160px;" @bind="filterStatus" @bind:after="ApplyFilters">
+                <option value="">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+            <select class="form-control" style="max-width: 140px;" @bind="filterTwoFactor" @bind:after="ApplyFilters">
+                <option value="">2FA: All</option>
+                <option value="enabled">2FA On</option>
+                <option value="disabled">2FA Off</option>
+            </select>
+            <button class="btn btn-secondary" @onclick="ApplyFilters">Search</button>
+        </div>
+    </div>
+
     @if (loading)
     {
         <div style="text-align: center; padding: 3rem; color: var(--text-muted);">Loading users...</div>
@@ -28,10 +53,11 @@
                     <th>2FA</th>
                     <th>Last Login</th>
                     <th>Status</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var user in users)
+                @foreach (var user in PagedUsers)
                 {
                     <tr>
                         <td>
@@ -69,24 +95,96 @@
                                 @(user.IsActive ? "Active" : "Inactive")
                             </span>
                         </td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <a href="/admin/users/@user.Id/edit" class="btn btn-sm btn-secondary">Edit</a>
+                                <button class="btn btn-sm @(user.IsActive ? "btn-secondary" : "btn-primary")"
+                                        @onclick="() => ToggleUser(user.Id)">
+                                    @(user.IsActive ? "Disable" : "Enable")
+                                </button>
+                            </div>
+                        </td>
                     </tr>
                 }
-                @if (!users.Any())
+                @if (!filteredUsers.Any())
                 {
-                    <tr><td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-muted);">No users found.</td></tr>
+                    <tr><td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-muted);">No users found.</td></tr>
                 }
             </tbody>
         </table>
+
+        @if (totalPages > 1)
+        {
+            <div class="table-footer" style="padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                <span class="text-muted" style="font-size: 0.875rem;">
+                    Showing @((currentPage - 1) * pageSize + 1)-@(Math.Min(currentPage * pageSize, filteredUsers.Count)) of @filteredUsers.Count
+                </span>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-secondary" @onclick="PrevPage" disabled="@(currentPage <= 1)">Previous</button>
+                    <span style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">Page @currentPage of @totalPages</span>
+                    <button class="btn btn-sm btn-secondary" @onclick="NextPage" disabled="@(currentPage >= totalPages)">Next</button>
+                </div>
+            </div>
+        }
     }
 </div>
 
 @code {
-    private List<UserDto> users = [];
+    private List<UserDto> allUsers = [];
+    private List<UserDto> filteredUsers = [];
+    private string searchText = "";
+    private string filterStatus = "";
+    private string filterTwoFactor = "";
+    private int currentPage = 1;
+    private const int pageSize = 20;
+    private int totalPages => (int)Math.Ceiling((double)filteredUsers.Count / pageSize);
     private bool loading = true;
+
+    private IEnumerable<UserDto> PagedUsers =>
+        filteredUsers.Skip((currentPage - 1) * pageSize).Take(pageSize);
 
     protected override async Task OnInitializedAsync()
     {
-        users = await Api.GetUsersAsync(null) ?? [];
+        allUsers = await Api.GetUsersAsync(null) ?? [];
+        ApplyFilters();
         loading = false;
+    }
+
+    private void ApplyFilters()
+    {
+        var q = allUsers.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            var s = searchText.Trim().ToLower();
+            q = q.Where(u =>
+                (u.FullName?.ToLower().Contains(s) ?? false) ||
+                (u.Email?.ToLower().Contains(s) ?? false) ||
+                (u.TenantName?.ToLower().Contains(s) ?? false));
+        }
+        if (filterStatus == "active") q = q.Where(u => u.IsActive);
+        else if (filterStatus == "inactive") q = q.Where(u => !u.IsActive);
+        if (filterTwoFactor == "enabled") q = q.Where(u => u.TwoFactorEnabled);
+        else if (filterTwoFactor == "disabled") q = q.Where(u => !u.TwoFactorEnabled);
+        filteredUsers = q.ToList();
+        currentPage = 1;
+    }
+
+    private Task HandleKey(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") ApplyFilters();
+        return Task.CompletedTask;
+    }
+
+    private void PrevPage() { if (currentPage > 1) currentPage--; }
+    private void NextPage() { if (currentPage < totalPages) currentPage++; }
+
+    private async Task ToggleUser(Guid id)
+    {
+        var ok = await Api.ToggleUserAsync(id);
+        if (ok)
+        {
+            allUsers = await Api.GetUsersAsync(null) ?? [];
+            ApplyFilters();
+        }
     }
 }

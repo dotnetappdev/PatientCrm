@@ -24,6 +24,8 @@ public class NotesController : ControllerBase
     {
         var note = await _unitOfWork.ClinicalNotes.GetByIdAsync(id, cancellationToken);
         if (note == null) return NotFound();
+        // Patients cannot access confidential notes
+        if (User.IsInRole("Patient") && note.IsConfidential) return Forbid();
         return Ok(note);
     }
 

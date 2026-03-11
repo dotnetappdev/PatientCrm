@@ -1,0 +1,191 @@
+@page "/departments"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Entities
+@using PatientCrm.Core.Enums
+@inject PatientApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>Departments - PatientCRM</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Hospital Departments</h1>
+        <p style="color: var(--text-muted); margin: 0; font-size: 0.875rem;">@(departments?.Count ?? 0) department(s) — @(departments?.Sum(d => d.Wards.Count) ?? 0) ward(s)</p>
+    </div>
+    <button class="btn btn-primary" @onclick="() => showCreate = true">+ New Department</button>
+</div>
+
+@if (loading)
+{
+    <div style="text-align: center; padding: 4rem; color: var(--text-muted);">Loading departments...</div>
+}
+else if (departments == null || !departments.Any())
+{
+    <div class="card" style="text-align: center; padding: 3rem; color: var(--text-muted);">No departments configured for this organisation.</div>
+}
+else
+{
+    <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.5rem;">
+        @foreach (var dept in departments.OrderBy(d => d.Name))
+        {
+            var deptId = dept.Id;
+            <div class="card" style="cursor: pointer;" @onclick="() => NavigateToDept(deptId)">
+                <div class="d-flex justify-between align-items-start" style="margin-bottom: 0.75rem;">
+                    <div>
+                        <div class="fw-600" style="font-size: 1rem;">@dept.Name</div>
+                        <div class="patient-meta">@dept.Code — @dept.Location</div>
+                    </div>
+                    <div class="d-flex gap-1 align-items-center">
+                        <span class="badge badge-blue">@dept.DepartmentType</span>
+                        <span class="badge @(dept.IsActive ? "badge-green" : "badge-gray")">@(dept.IsActive ? "Active" : "Inactive")</span>
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(dept.Description))
+                {
+                    <p style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0 0 0.75rem;">@dept.Description</p>
+                }
+                <div class="d-flex gap-3" style="font-size: 0.8125rem; color: var(--text-muted);">
+                    <span>🏥 @dept.Wards.Count ward(s)</span>
+                    @if (!string.IsNullOrEmpty(dept.HeadOfDepartment))
+                    { <span>👤 @dept.HeadOfDepartment</span> }
+                    @if (!string.IsNullOrEmpty(dept.PhoneExtension))
+                    { <span>📞 Ext. @dept.PhoneExtension</span> }
+                </div>
+                <div class="d-flex gap-2" style="margin-top: 0.75rem; border-top: 1px solid var(--border); padding-top: 0.75rem;">
+                    <a href="/departments/@dept.Id" class="btn btn-sm btn-secondary" @onclick:stopPropagation>View</a>
+                    <button class="btn btn-sm btn-secondary" @onclick="() => OpenEdit(dept)" @onclick:stopPropagation>Edit</button>
+                    <button class="btn btn-sm btn-secondary" style="color:var(--danger,#ef4444);" @onclick="() => DeleteDept(dept)" @onclick:stopPropagation>Delete</button>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<!-- Create / Edit Department Modal -->
+@if (showCreate || editingDept != null)
+{
+    var isEdit = editingDept != null;
+    var model = isEdit ? editingDept! : newDept;
+    <div class="modal-backdrop open">
+        <div class="modal" style="max-width: 680px;">
+            <div class="modal-header">
+                <h3 class="modal-title">@(isEdit ? "Edit Department" : "New Department")</h3>
+                <button class="btn-icon" @onclick="() => { showCreate = false; editingDept = null; formError = null; }">&#x2715;</button>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex: 2;">
+                    <label class="form-label">Department Name *</label>
+                    <input class="form-control" @bind="model.Name" placeholder="e.g. Cardiology" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Code</label>
+                    <input class="form-control" @bind="model.Code" placeholder="e.g. CARD" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex: 2;">
+                    <label class="form-label">Type *</label>
+                    <select class="form-control" @bind="model.DepartmentType">
+                        @foreach (var t in Enum.GetValues<DepartmentType>())
+                        { <option value="@t">@t</option> }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone Extension</label>
+                    <input class="form-control" @bind="model.PhoneExtension" placeholder="3100" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Location (Building / Floor)</label>
+                <input class="form-control" @bind="model.Location" placeholder="e.g. Block A, Level 3" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Head of Department</label>
+                <input class="form-control" @bind="model.HeadOfDepartment" placeholder="e.g. Prof. Sarah Smith" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-control" rows="2" @bind="model.Description" placeholder="Brief overview of services provided..."></textarea>
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" @bind="model.IsActive" /> Active
+                </label>
+            </div>
+            @if (!string.IsNullOrEmpty(formError))
+            { <div class="alert alert-danger">@formError</div> }
+            <div class="d-flex justify-between" style="margin-top: 1rem;">
+                <button class="btn btn-secondary" @onclick="() => { showCreate = false; editingDept = null; formError = null; }">Cancel</button>
+                <button class="btn btn-primary" @onclick="SaveDepartment">@(isEdit ? "Save Changes" : "Create Department")</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Department>? departments;
+    private bool loading = true;
+    private bool showCreate;
+    private Department? editingDept;
+    private Department newDept = new() { Name = "", IsActive = true };
+    private string? formError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        departments = await Api.GetDepartmentsAsync();
+        loading = false;
+    }
+
+    private void NavigateToDept(Guid id) => Nav.NavigateTo("/departments/" + id);
+
+    private void OpenEdit(Department dept)
+    {
+        editingDept = new Department
+        {
+            Id = dept.Id, TenantId = dept.TenantId, Name = dept.Name, Code = dept.Code,
+            DepartmentType = dept.DepartmentType, Description = dept.Description,
+            Location = dept.Location, PhoneExtension = dept.PhoneExtension,
+            HeadOfDepartment = dept.HeadOfDepartment, IsActive = dept.IsActive
+        };
+        formError = null;
+    }
+
+    private async Task SaveDepartment()
+    {
+        var model = editingDept ?? newDept;
+        if (string.IsNullOrWhiteSpace(model.Name)) { formError = "Department name is required."; return; }
+        formError = null;
+
+        bool ok;
+        if (editingDept != null)
+            ok = await Api.UpdateDepartmentAsync(editingDept.Id, editingDept);
+        else
+        {
+            var created = await Api.CreateDepartmentAsync(newDept);
+            ok = created != null;
+        }
+
+        if (ok)
+        {
+            Notifications.SetSuccess(editingDept != null ? "Department updated." : "Department created.");
+            showCreate = false;
+            editingDept = null;
+            newDept = new Department { Name = "", IsActive = true };
+            departments = await Api.GetDepartmentsAsync();
+        }
+        else formError = "Failed to save department.";
+    }
+
+    private async Task DeleteDept(Department dept)
+    {
+        var ok = await Api.DeleteDepartmentAsync(dept.Id);
+        if (ok)
+        {
+            Notifications.SetSuccess($"Department '{dept.Name}' removed.");
+            departments = await Api.GetDepartmentsAsync();
+        }
+        else Notifications.SetError("Failed to delete department.");
+    }
+}

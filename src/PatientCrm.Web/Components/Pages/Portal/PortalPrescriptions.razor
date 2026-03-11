@@ -1,0 +1,132 @@
+@page "/portal/prescriptions"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Patient")]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Entities
+@using PatientCrm.Core.Enums
+@inject PatientApiClient Api
+@inject NotificationService Notifications
+
+<PageTitle>My Medications - PatientCRM</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">My Medications &amp; Prescriptions</h1>
+        <a href="/portal" style="color: var(--text-muted); font-size: 0.875rem;">← Back to my health record</a>
+    </div>
+</div>
+
+@if (loading)
+{
+    <div style="text-align: center; padding: 4rem; color: var(--text-muted);">Loading...</div>
+}
+else if (!prescriptions.Any())
+{
+    <div class="card" style="text-align: center; padding: 3rem; color: var(--text-muted);">No prescription history on record.</div>
+}
+else
+{
+    <!-- Active medications summary -->
+    @if (activeMeds.Any())
+    {
+        <div class="alert alert-info" style="margin-bottom: 1.5rem;">
+            <strong>💊 @activeMeds.Count active medication(s):</strong>
+            @string.Join(" · ", activeMeds.Select(m => m.MedicationName + (m.IsControlledDrug ? " (CD)" : "")))
+        </div>
+    }
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr><th>Medication</th><th>Dosage &amp; Route</th><th>Prescribed</th><th>Repeats Remaining</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var rx in prescriptions)
+                {
+                    <tr>
+                        <td>
+                            <div class="fw-600">@rx.MedicationName</div>
+                            @if (!string.IsNullOrEmpty(rx.GenericName))
+                            { <div class="patient-meta">Generic: @rx.GenericName</div> }
+                            @if (rx.IsControlledDrug)
+                            { <span class="badge badge-red" style="font-size: 0.7rem;">CD</span> }
+                        </td>
+                        <td>
+                            <div>@rx.Dosage — @rx.Frequency</div>
+                            @if (!string.IsNullOrEmpty(rx.Route))
+                            { <div class="patient-meta">@rx.Route</div> }
+                            @if (!string.IsNullOrEmpty(rx.Instructions))
+                            { <div class="patient-meta" style="font-style: italic;">@rx.Instructions</div> }
+                        </td>
+                        <td>
+                            <div>@rx.PrescribedDate.ToString("dd MMM yyyy")</div>
+                            @if (rx.EndDate.HasValue)
+                            { <div class="patient-meta">Until @rx.EndDate.Value.ToString("dd MMM yyyy")</div> }
+                        </td>
+                        <td>
+                            @if (rx.Status == PrescriptionStatus.Active)
+                            {
+                                <span class="badge @(rx.RepeatsRemaining > 0 ? "badge-green" : "badge-gray")">
+                                    @rx.RepeatsRemaining of @rx.Repeats repeat(s)
+                                </span>
+                            }
+                            else { <span>—</span> }
+                        </td>
+                        <td>
+                            <span class="badge @(rx.Status == PrescriptionStatus.Active ? "badge-green" : "badge-gray")">@rx.Status</span>
+                        </td>
+                        <td>
+                            @if (rx.Status == PrescriptionStatus.Active && rx.RepeatsRemaining > 0)
+                            {
+                                <button class="btn btn-sm btn-primary" @onclick="() => RequestReorder(rx)" title="Request a repeat prescription">
+                                    ↺ Request Repeat
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(reorderMsg))
+{
+    <div class="alert @(reorderOk ? "alert-success" : "alert-danger")" style="margin-top: 1rem;">@reorderMsg</div>
+}
+
+@code {
+    private List<Prescription> prescriptions = new();
+    private List<Prescription> activeMeds = new();
+    private bool loading = true;
+    private string? reorderMsg;
+    private bool reorderOk;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var patient = await Api.GetMyPortalRecordAsync();
+        if (patient != null)
+        {
+            prescriptions = patient.Prescriptions.OrderByDescending(p => p.PrescribedDate).ToList();
+            activeMeds = prescriptions.Where(p => p.Status == PrescriptionStatus.Active).ToList();
+        }
+        loading = false;
+    }
+
+    private async Task RequestReorder(Prescription rx)
+    {
+        var (ok, error) = await Api.ReorderPrescriptionAsync(rx.Id);
+        reorderOk = ok;
+        reorderMsg = ok
+            ? $"Repeat prescription request submitted for {rx.MedicationName}. Your GP will review and issue the prescription."
+            : (error ?? "Failed to request repeat. Please contact your GP practice directly.");
+        if (ok)
+        {
+            var patient = await Api.GetMyPortalRecordAsync();
+            if (patient != null)
+            {
+                prescriptions = patient.Prescriptions.OrderByDescending(p => p.PrescribedDate).ToList();
+                activeMeds = prescriptions.Where(p => p.Status == PrescriptionStatus.Active).ToList();
+            }
+        }
+    }
+}

@@ -20,9 +20,11 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAppointments(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetAppointments([FromQuery] DateTime? date, CancellationToken cancellationToken)
     {
         var appointments = await _unitOfWork.Appointments.GetAllAsync(cancellationToken);
+        if (date.HasValue)
+            appointments = appointments.Where(a => a.StartTime.Date == date.Value.Date);
         return Ok(appointments);
     }
 
@@ -65,4 +67,31 @@ public class AppointmentsController : ControllerBase
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
+
+    [HttpPost("{id:guid}/generate-video-link")]
+    [Authorize(Roles = "SuperAdmin,TenantAdmin,GP,Dentist,Consultant,Nurse,Receptionist")]
+    public async Task<IActionResult> GenerateVideoLink(Guid id, [FromBody] GenerateVideoLinkRequest request, CancellationToken cancellationToken)
+    {
+        var appointment = await _unitOfWork.Appointments.GetByIdAsync(id, cancellationToken);
+        if (appointment == null) return NotFound();
+
+        var meetingId = Guid.NewGuid().ToString("N")[..10];
+        appointment.VideoCallPlatform = request.Platform;
+        appointment.VideoCallLink = request.Platform switch
+        {
+            "Zoom" => $"https://zoom.us/j/{meetingId}",
+            "MicrosoftTeams" => $"https://teams.microsoft.com/l/meetup-join/{meetingId}",
+            "AccuBook" => $"https://video.nhs.uk/room/{meetingId}",
+            _ => $"https://meet.google.com/{meetingId[..3]}-{meetingId[3..7]}-{meetingId[7..]}"
+        };
+        if (request.EnablePasscode)
+        {
+            appointment.VideoCallPasscode = Random.Shared.Next(100000, 999999).ToString();
+        }
+        await _unitOfWork.Appointments.UpdateAsync(appointment, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Ok(new { link = appointment.VideoCallLink, passcode = appointment.VideoCallPasscode, platform = appointment.VideoCallPlatform });
+    }
 }
+
+public record GenerateVideoLinkRequest(string Platform, bool EnablePasscode);

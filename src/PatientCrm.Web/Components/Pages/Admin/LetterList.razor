@@ -1,0 +1,448 @@
+@page "/letters"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,TenantAdmin,GP,Dentist,Consultant,Nurse,Receptionist")]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Entities
+@using PatientCrm.Core.Enums
+@inject PatientApiClient ApiClient
+@inject NotificationService Notifications
+@inject IJSRuntime JS
+
+<PageTitle>Letters - PatientCRM</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Letters</h1>
+        <p style="color: var(--text-muted); margin: 0;">Clinical correspondence and letters</p>
+    </div>
+    <button class="btn btn-primary" @onclick="OpenCreateModal">+ New Letter</button>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="form-row" style="align-items: flex-end;">
+        <div class="form-group" style="flex: 2;">
+            <label class="form-label">Search</label>
+            <input class="form-control" placeholder="Search by subject or patient name..." @bind="searchTerm" @bind:event="oninput" @onkeyup="ApplyFilters" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-control" @bind="statusFilter" @bind:after="ApplyFilters">
+                <option value="">All Statuses</option>
+                @foreach (var s in Enum.GetValues<LetterStatus>())
+                {
+                    <option value="@s">@s</option>
+                }
+            </select>
+        </div>
+    </div>
+</div>
+
+@if (loading)
+{
+    <div style="text-align:center; padding: 4rem; color: var(--text-muted);">Loading...</div>
+}
+else if (!filtered.Any())
+{
+    <div class="card" style="text-align:center; padding: 3rem; color: var(--text-muted);">No letters found.</div>
+}
+else
+{
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Subject</th>
+                    <th>Patient</th>
+                    <th>Author</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var letter in paged)
+                {
+                    <tr>
+                        <td style="white-space:nowrap;">@letter.LetterDate.ToString("dd MMM yyyy")</td>
+                        <td><div class="fw-600">@letter.Subject</div></td>
+                        <td>@letter.Patient?.FullName</td>
+                        <td>@letter.AuthorName @(letter.AuthorTitle != null ? $"({letter.AuthorTitle})" : "")</td>
+                        <td>
+                            <span class="badge @StatusBadge(letter.Status)">@letter.Status</span>
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-sm btn-secondary" @onclick="() => OpenViewModal(letter)">View</button>
+                                @if (letter.Status != LetterStatus.Sent && letter.Status != LetterStatus.Archived)
+                                {
+                                    <button class="btn btn-sm btn-primary" @onclick="() => OpenEditModal(letter)">Edit</button>
+                                    <button class="btn btn-sm btn-secondary" @onclick="() => SendLetterAsync(letter)">Send</button>
+                                }
+                                <button class="btn btn-sm btn-danger" @onclick="() => DeleteLetterAsync(letter)">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    @if (totalPages > 1)
+    {
+        <div class="d-flex gap-2 justify-center" style="margin-top: 1rem;">
+            <button class="btn btn-secondary btn-sm" disabled="@(page == 1)" @onclick="() => SetPage(page - 1)">← Prev</button>
+            <span style="line-height: 2rem; color: var(--text-muted);">Page @(page) of @(totalPages)</span>
+            <button class="btn btn-secondary btn-sm" disabled="@(page == totalPages)" @onclick="() => SetPage(page + 1)">Next →</button>
+        </div>
+    }
+}
+
+<!-- View Modal -->
+@if (viewLetter != null)
+{
+    <div class="modal-overlay" @onclick="CloseViewModal">
+        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;" @onclick:stopPropagation>
+            <div class="modal-header">
+                <h3>@viewLetter.Subject</h3>
+                <button class="btn-icon" @onclick="CloseViewModal">✕</button>
+            </div>
+
+            <!-- Letterhead -->
+            <div id="letter-print-area" style="background: white; padding: 2rem; border: 1px solid #e5e7eb; border-radius: 8px; margin: 1rem 0;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; border-bottom: 2px solid #1a56db; padding-bottom: 1rem;">
+                    <div>
+                        @if (!string.IsNullOrEmpty(viewLetter.PracticeLogoBase64))
+                        {
+                            <img src="data:image/png;base64,@viewLetter.PracticeLogoBase64" style="max-height: 60px; margin-bottom: 0.5rem;" alt="Practice Logo" />
+                        }
+                        <div style="font-size: 0.875rem; color: #6b7280;">@viewLetter.LetterDate.ToString("dd MMMM yyyy")</div>
+                        <div style="font-size: 0.875rem; color: #6b7280; margin-top: 1rem;">
+                            <strong>@viewLetter.Patient?.FullName</strong><br/>
+                            @viewLetter.Patient?.AddressLine1<br/>
+                            @viewLetter.Patient?.City @viewLetter.Patient?.Postcode
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #1a56db;">@(viewLetter.PracticeName ?? "PatientCRM Practice")</div>
+                        <div style="font-size: 0.8rem; color: #6b7280;">@viewLetter.PracticeAddress</div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <strong>@viewLetter.AuthorName</strong>
+                    @if (!string.IsNullOrEmpty(viewLetter.AuthorTitle))
+                    { <span style="color: #6b7280;"> – @viewLetter.AuthorTitle</span> }
+                </div>
+
+                <h4 style="margin-bottom: 1.5rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem;">@viewLetter.Subject</h4>
+
+                <div style="line-height: 1.7;">@((MarkupString)viewLetter.Body)</div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" @onclick="CloseViewModal">Close</button>
+                <button class="btn btn-primary" @onclick="PrintLetter">🖨️ Print / Save as PDF</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Create/Edit Modal -->
+@if (showCreateEdit)
+{
+    <div class="modal-overlay" @onclick="CloseCreateModal">
+        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;" @onclick:stopPropagation>
+            <div class="modal-header">
+                <h3>@(editingLetter?.Id == Guid.Empty ? "New Letter" : "Edit Letter")</h3>
+                <button class="btn-icon" @onclick="CloseCreateModal">✕</button>
+            </div>
+
+            @if (editingLetter != null)
+            {
+                <div class="form-group">
+                    <label class="form-label">Template (optional)</label>
+                    <select class="form-control" @bind="selectedTemplateId" @bind:after="ApplyTemplate">
+                        <option value="">— Select template —</option>
+                        @foreach (var t in templates)
+                        {
+                            <option value="@t.Id">[@t.Category] @t.Title</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Patient *</label>
+                    <input class="form-control" @bind="patientSearch" @oninput="SearchPatients" placeholder="Type patient name..." />
+                    @if (patientResults.Any())
+                    {
+                        <div style="border: 1px solid #e5e7eb; border-radius: 6px; background: var(--card-bg); max-height: 200px; overflow-y: auto;">
+                            @foreach (var p in patientResults)
+                            {
+                                <div style="padding: 0.5rem 1rem; cursor: pointer;" @onclick="() => SelectPatient(p)">
+                                    @p.FullName — @p.DateOfBirth.ToString("dd/MM/yyyy") @(!string.IsNullOrEmpty(p.NhsNumber) ? $"(NHS {p.NhsNumber})" : "")
+                                </div>
+                            }
+                        </div>
+                    }
+                    @if (editingLetter.PatientId != Guid.Empty)
+                    {
+                        <div style="margin-top: 0.25rem; font-size: 0.875rem; color: var(--success, green);">✓ Patient selected</div>
+                    }
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Subject *</label>
+                    <input class="form-control" @bind="editingLetter.Subject" placeholder="Letter subject..." />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Body (HTML)</label>
+                    <textarea class="form-control" rows="10" @bind="editingLetter.Body" placeholder="Letter body..."></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select class="form-control" @bind="editingLetter.Status">
+                            @foreach (var s in Enum.GetValues<LetterStatus>())
+                            {
+                                <option value="@s">@s</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Author Name</label>
+                        <input class="form-control" @bind="editingLetter.AuthorName" placeholder="Dr Jane Smith" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Author Title</label>
+                        <input class="form-control" @bind="editingLetter.AuthorTitle" placeholder="Consultant Cardiologist" />
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: flex-end; padding-bottom: 0.25rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" @bind="editingLetter.IsPatientVisible" />
+                            Patient visible
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Practice Name</label>
+                        <input class="form-control" @bind="editingLetter.PracticeName" placeholder="Greenfield Medical Practice" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Practice Address</label>
+                        <input class="form-control" @bind="editingLetter.PracticeAddress" placeholder="123 Main St, Manchester" />
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(formError))
+                {
+                    <div class="alert alert-danger">@formError</div>
+                }
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseCreateModal">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveLetterAsync">Save Letter</button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private List<Letter> letters = new();
+    private List<Letter> filtered = new();
+    private List<Letter> paged = new();
+    private List<LetterTemplate> templates = new();
+    private List<Patient> patientResults = new();
+
+    private string searchTerm = "";
+    private string statusFilter = "";
+    private bool loading = true;
+    private int page = 1;
+    private const int PageSize = 20;
+    private int totalPages = 1;
+
+    private Letter? viewLetter;
+    private Letter? editingLetter;
+    private bool showCreateEdit;
+    private string? formError;
+    private string patientSearch = "";
+    private Guid selectedTemplateId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        letters = await ApiClient.GetLettersAsync() ?? new();
+        templates = await ApiClient.GetLetterTemplatesAsync() ?? new();
+        loading = false;
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        filtered = letters
+            .Where(l =>
+                (string.IsNullOrEmpty(searchTerm) ||
+                 l.Subject.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                 (l.AuthorName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)) &&
+                (string.IsNullOrEmpty(statusFilter) ||
+                 l.Status.ToString() == statusFilter))
+            .OrderByDescending(l => l.LetterDate)
+            .ToList();
+
+        totalPages = Math.Max(1, (int)Math.Ceiling(filtered.Count / (double)PageSize));
+        page = Math.Min(page, totalPages);
+        SetPage(page);
+    }
+
+    private void SetPage(int p)
+    {
+        page = p;
+        paged = filtered.Skip((page - 1) * PageSize).Take(PageSize).ToList();
+    }
+
+    private void OpenCreateModal()
+    {
+        editingLetter = new Letter { Id = Guid.Empty, Subject = "", Body = "", IsPatientVisible = true };
+        selectedTemplateId = Guid.Empty;
+        patientSearch = "";
+        patientResults = new();
+        formError = null;
+        showCreateEdit = true;
+    }
+
+    private void OpenEditModal(Letter letter)
+    {
+        editingLetter = new Letter
+        {
+            Id = letter.Id, TenantId = letter.TenantId, PatientId = letter.PatientId,
+            TemplateId = letter.TemplateId, DepartmentId = letter.DepartmentId,
+            AuthorId = letter.AuthorId, AuthorName = letter.AuthorName, AuthorTitle = letter.AuthorTitle,
+            Subject = letter.Subject, Body = letter.Body, Status = letter.Status,
+            LetterDate = letter.LetterDate, SentAt = letter.SentAt, IsPrinted = letter.IsPrinted,
+            IsPatientVisible = letter.IsPatientVisible, PracticeName = letter.PracticeName,
+            PracticeAddress = letter.PracticeAddress
+        };
+        selectedTemplateId = Guid.Empty;
+        patientSearch = "";
+        patientResults = new();
+        formError = null;
+        showCreateEdit = true;
+    }
+
+    private void CloseCreateModal()
+    {
+        showCreateEdit = false;
+        editingLetter = null;
+    }
+
+    private void OpenViewModal(Letter letter) => viewLetter = letter;
+    private void CloseViewModal() => viewLetter = null;
+
+    private async Task PrintLetter()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    private async Task SearchPatients(ChangeEventArgs e)
+    {
+        patientSearch = e.Value?.ToString() ?? "";
+        if (patientSearch.Length < 2) { patientResults = new(); return; }
+        var result = await ApiClient.GetPatientsAsync(patientSearch, 1, 10);
+        patientResults = result?.Patients ?? new();
+    }
+
+    private void SelectPatient(Patient p)
+    {
+        if (editingLetter == null) return;
+        editingLetter.PatientId = p.Id;
+        patientSearch = p.FullName;
+        patientResults = new();
+    }
+
+    private void ApplyTemplate()
+    {
+        if (editingLetter == null || selectedTemplateId == Guid.Empty) return;
+        var tmpl = templates.FirstOrDefault(t => t.Id == selectedTemplateId);
+        if (tmpl == null) return;
+        editingLetter.TemplateId = tmpl.Id;
+        editingLetter.Subject = tmpl.Subject;
+        editingLetter.Body = tmpl.Body;
+    }
+
+    private async Task SaveLetterAsync()
+    {
+        if (editingLetter == null) return;
+        if (string.IsNullOrWhiteSpace(editingLetter.Subject) || string.IsNullOrWhiteSpace(editingLetter.Body))
+        {
+            formError = "Subject and body are required.";
+            return;
+        }
+        if (editingLetter.PatientId == Guid.Empty)
+        {
+            formError = "Please select a patient.";
+            return;
+        }
+        formError = null;
+
+        bool ok;
+        if (editingLetter.Id == Guid.Empty)
+        {
+            var created = await ApiClient.CreateLetterAsync(editingLetter);
+            ok = created != null;
+        }
+        else
+        {
+            ok = await ApiClient.UpdateLetterAsync(editingLetter.Id, editingLetter);
+        }
+
+        if (ok)
+        {
+            Notifications.SetSuccess("Letter saved.");
+            showCreateEdit = false;
+            editingLetter = null;
+            letters = await ApiClient.GetLettersAsync() ?? new();
+            ApplyFilters();
+        }
+        else formError = "Failed to save letter.";
+    }
+
+    private async Task SendLetterAsync(Letter letter)
+    {
+        var ok = await ApiClient.SendLetterAsync(letter.Id);
+        if (ok)
+        {
+            Notifications.SetSuccess("Letter marked as sent.");
+            letters = await ApiClient.GetLettersAsync() ?? new();
+            ApplyFilters();
+        }
+        else Notifications.SetError("Failed to send letter.");
+    }
+
+    private async Task DeleteLetterAsync(Letter letter)
+    {
+        var ok = await ApiClient.DeleteLetterAsync(letter.Id);
+        if (ok)
+        {
+            Notifications.SetSuccess("Letter deleted.");
+            letters.Remove(letter);
+            ApplyFilters();
+        }
+        else Notifications.SetError("Failed to delete letter.");
+    }
+
+    private static string StatusBadge(LetterStatus s) => s switch
+    {
+        LetterStatus.Draft => "badge-yellow",
+        LetterStatus.Final => "badge-blue",
+        LetterStatus.Sent => "badge-green",
+        LetterStatus.Archived => "badge-gray",
+        _ => "badge-gray"
+    };
+}

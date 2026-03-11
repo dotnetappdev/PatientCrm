@@ -1,0 +1,140 @@
+@page "/portal/letters"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Patient")]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Entities
+@using PatientCrm.Core.Enums
+@inject PatientApiClient ApiClient
+@inject IJSRuntime JS
+
+<PageTitle>My Letters - PatientCRM</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">My Letters</h1>
+        <a href="/portal" style="color: var(--text-muted); font-size: 0.875rem;">← Back to my health record</a>
+    </div>
+</div>
+
+@if (loading)
+{
+    <div style="text-align: center; padding: 4rem; color: var(--text-muted);">Loading...</div>
+}
+else if (!letters.Any())
+{
+    <div class="card" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+        No letters on file.
+    </div>
+}
+else
+{
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Subject</th>
+                    <th>From</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var letter in letters)
+                {
+                    <tr>
+                        <td style="white-space: nowrap;">@letter.LetterDate.ToString("dd MMM yyyy")</td>
+                        <td><div class="fw-600">@letter.Subject</div></td>
+                        <td>
+                            @letter.AuthorName
+                            @if (!string.IsNullOrEmpty(letter.AuthorTitle))
+                            { <div class="patient-meta">@letter.AuthorTitle</div> }
+                        </td>
+                        <td>
+                            <span class="badge @StatusBadge(letter.Status)">@letter.Status</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-secondary" @onclick="() => OpenLetter(letter)">View</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<!-- Letter View Modal -->
+@if (activeLetter != null)
+{
+    <div class="modal-overlay" @onclick="CloseLetter">
+        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;" @onclick:stopPropagation>
+            <div class="modal-header">
+                <h3>@activeLetter.Subject</h3>
+                <button class="btn-icon" @onclick="CloseLetter">✕</button>
+            </div>
+
+            <!-- NHS Letterhead -->
+            <div id="portal-letter-print" style="background: white; padding: 2rem; border: 1px solid #e5e7eb; border-radius: 8px; margin: 1rem 0;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; border-bottom: 2px solid #1a56db; padding-bottom: 1rem;">
+                    <div>
+                        @if (!string.IsNullOrEmpty(activeLetter.PracticeLogoBase64))
+                        {
+                            <img src="data:image/png;base64,@activeLetter.PracticeLogoBase64" style="max-height: 60px; margin-bottom: 0.5rem;" alt="Practice Logo" />
+                        }
+                        <div style="font-size: 0.875rem; color: #6b7280;">@activeLetter.LetterDate.ToString("dd MMMM yyyy")</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #1a56db;">@(activeLetter.PracticeName ?? "Your Practice")</div>
+                        @if (!string.IsNullOrEmpty(activeLetter.PracticeAddress))
+                        {
+                            <div style="font-size: 0.8rem; color: #6b7280;">@activeLetter.PracticeAddress</div>
+                        }
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <strong>@activeLetter.AuthorName</strong>
+                    @if (!string.IsNullOrEmpty(activeLetter.AuthorTitle))
+                    { <span style="color: #6b7280;"> – @activeLetter.AuthorTitle</span> }
+                </div>
+
+                <h4 style="margin-bottom: 1.5rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem;">@activeLetter.Subject</h4>
+
+                <div style="line-height: 1.7;">@((MarkupString)activeLetter.Body)</div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" @onclick="CloseLetter">Close</button>
+                <button class="btn btn-primary" @onclick="PrintLetter">🖨️ Print / Save as PDF</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Letter> letters = new();
+    private Letter? activeLetter;
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        letters = await ApiClient.GetMyPortalLettersAsync() ?? new();
+        loading = false;
+    }
+
+    private void OpenLetter(Letter letter) => activeLetter = letter;
+    private void CloseLetter() => activeLetter = null;
+
+    private async Task PrintLetter()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    private static string StatusBadge(LetterStatus s) => s switch
+    {
+        LetterStatus.Draft => "badge-yellow",
+        LetterStatus.Final => "badge-blue",
+        LetterStatus.Sent => "badge-green",
+        LetterStatus.Archived => "badge-gray",
+        _ => "badge-gray"
+    };
+}

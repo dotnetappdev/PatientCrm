@@ -54,6 +54,10 @@ public class Patient : BaseEntity
     public PatientStatus Status { get; set; } = PatientStatus.Active;
     public DateTime? DeceasedDate { get; set; }
 
+    // Patient Portal – linked identity user account (null = no portal access yet)
+    public Guid? PatientUserId { get; set; }
+    public ApplicationUser? PatientUser { get; set; }
+
     // Clinical
     public string? Allergies { get; set; }
     public string? CurrentMedications { get; set; }
@@ -73,6 +77,7 @@ public class Patient : BaseEntity
     public ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();
     public ICollection<MedicalImage> MedicalImages { get; set; } = new List<MedicalImage>();
     public ICollection<PatientAlert> Alerts { get; set; } = new List<PatientAlert>();
+    public ICollection<PatientAdmission> Admissions { get; set; } = new List<PatientAdmission>();
     public DentalRecord? DentalRecord { get; set; }
     public GpRecord? GpRecord { get; set; }
 }

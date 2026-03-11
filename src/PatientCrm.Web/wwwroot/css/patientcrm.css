@@ -48,19 +48,28 @@
 }
 
 [data-theme="dark"] {
-    --bg-body: #0f172a;
-    --bg-surface: #1e293b;
-    --bg-surface-2: #162032;
-    --bg-header: #1e293b;
-    --bg-sidebar: #0f172a;
-    --bg-sidebar-hover: #1e293b;
+    /* BookIt purple dark theme */
+    --primary: #a78bfa;
+    --primary-dark: #8b5cf6;
+    --primary-light: #2e1065;
 
-    --text-primary: #f1f5f9;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
+    --bg-body: #0d0b1e;
+    --bg-surface: #1a1535;
+    --bg-surface-2: #221c45;
+    --bg-header: #1a1535;
+    --bg-sidebar: #0d0b1e;
+    --bg-sidebar-hover: #1e1b4b;
+    --bg-sidebar-active: #7c3aed;
 
-    --border: #334155;
-    --shadow: 0 4px 6px -1px rgba(0,0,0,0.4), 0 2px 4px -1px rgba(0,0,0,0.3);
+    --text-primary: #f5f3ff;
+    --text-secondary: #c4b5fd;
+    --text-muted: #7c6dc4;
+    --text-sidebar: #c4b5fd;
+    --text-sidebar-active: #ffffff;
+
+    --border: #2d2060;
+    --border-focus: #a78bfa;
+    --shadow: 0 4px 6px -1px rgba(0,0,0,0.5), 0 2px 4px -1px rgba(0,0,0,0.4);
 }
 
 /* Reset & Base */
@@ -315,10 +324,12 @@ body {
 
 /* Main Content */
 .app-main {
-    margin-left: var(--sidebar-width);
-    margin-top: var(--header-height);
+    grid-column: 2;
+    grid-row: 2;
     padding: 1.5rem;
     min-height: calc(100vh - var(--header-height));
+    margin-top: var(--header-height);
+    min-width: 0;
 }
 
 /* Page Header */
@@ -960,7 +971,7 @@ tbody td {
     }
 
     .app-main {
-        margin-left: 0;
+        grid-column: 1 / -1;
         padding: 1rem;
     }
 

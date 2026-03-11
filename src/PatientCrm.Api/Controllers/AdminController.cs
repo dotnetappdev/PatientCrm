@@ -206,13 +206,117 @@ public class AdminController : ControllerBase
             return Forbid();
 
         var currentRoles = await _userManager.GetRolesAsync(user);
-        await _userManager.RemoveFromRolesAsync(user, currentRoles);
-        var result = await _userManager.AddToRoleAsync(user, request.Role);
+        var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+        if (!removeResult.Succeeded)
+            return BadRequest(removeResult.Errors);
+        var addResult = await _userManager.AddToRoleAsync(user, request.Role);
+        if (!addResult.Succeeded)
+            return BadRequest(addResult.Errors);
 
+        return Ok(new { message = $"Role set to {request.Role}" });
+    }
+
+    [HttpGet("users/{userId:guid}")]
+    public async Task<IActionResult> GetUser(Guid userId)
+    {
+        var user = await _context.Users.Include(u => u.Tenant).FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null) return NotFound();
+        if (!IsSuperAdmin() && user.TenantId != GetTenantId()) return Forbid();
+        var roles = await _userManager.GetRolesAsync(user);
+        return Ok(new
+        {
+            user.Id, user.Email, user.FirstName, user.LastName, user.FullName,
+            user.Title, user.GmcNumber, user.GdcNumber, user.NmcPin,
+            user.TenantId, user.IsActive, user.TwoFactorEnabled, user.LastLoginAt, user.CreatedAt,
+            TenantName = user.Tenant?.Name,
+            Roles = roles
+        });
+    }
+
+    [HttpPost("users")]
+    [Authorize(Roles = "SuperAdmin,TenantAdmin")]
+    public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
+    {
+        // Resolve TenantId from claims when caller is not SuperAdmin
+        var effectiveTenantId = IsSuperAdmin() ? request.TenantId : GetTenantId();
+        if (effectiveTenantId == Guid.Empty)
+            return BadRequest(new { message = "TenantId is required." });
+
+        var user = new ApplicationUser
+        {
+            UserName = request.Email,
+            Email = request.Email,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            Title = request.Title,
+            GmcNumber = request.GmcNumber,
+            GdcNumber = request.GdcNumber,
+            TenantId = effectiveTenantId,
+            IsActive = true,
+            EmailConfirmed = true
+        };
+
+        var result = await _userManager.CreateAsync(user, request.Password);
         if (!result.Succeeded)
             return BadRequest(result.Errors);
 
-        return Ok(new { message = $"Role set to {request.Role}" });
+        if (!string.IsNullOrWhiteSpace(request.Role))
+        {
+            var roleResult = await _userManager.AddToRoleAsync(user, request.Role);
+            if (!roleResult.Succeeded)
+            {
+                await _userManager.DeleteAsync(user);
+                return BadRequest(roleResult.Errors);
+            }
+        }
+
+        return Ok(new { user.Id, user.FullName, user.Email });
+    }
+
+    [HttpPut("users/{userId:guid}")]
+    [Authorize(Roles = "SuperAdmin,TenantAdmin")]
+    public async Task<IActionResult> UpdateUser(Guid userId, [FromBody] UpdateUserRequest request)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user == null) return NotFound();
+        if (!IsSuperAdmin() && user.TenantId != GetTenantId()) return Forbid();
+
+        user.FirstName = request.FirstName;
+        user.LastName = request.LastName;
+        user.Title = request.Title;
+        user.GmcNumber = request.GmcNumber;
+        user.GdcNumber = request.GdcNumber;
+        if (!string.IsNullOrWhiteSpace(request.Email) && user.Email != request.Email)
+        {
+            user.Email = request.Email;
+            user.UserName = request.Email;
+        }
+        await _userManager.UpdateAsync(user);
+
+        if (!string.IsNullOrWhiteSpace(request.Role))
+        {
+            var currentRoles = await _userManager.GetRolesAsync(user);
+            await _userManager.RemoveFromRolesAsync(user, currentRoles);
+            await _userManager.AddToRoleAsync(user, request.Role);
+        }
+
+        return Ok(new { user.Id, user.FullName, user.Email });
+    }
+
+    [HttpPost("users/{userId:guid}/reset-password")]
+    [Authorize(Roles = "SuperAdmin,TenantAdmin")]
+    public async Task<IActionResult> ResetPassword(Guid userId, [FromBody] ResetPasswordRequest request)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user == null) return NotFound();
+        if (!IsSuperAdmin() && user.TenantId != GetTenantId()) return Forbid();
+
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var result = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
+        if (!result.Succeeded)
+            return BadRequest(result.Errors);
+
+        return Ok(new { message = "Password reset successfully." });
     }
 
     private async Task<Tenant?> GetTenantForEdit(Guid id)
@@ -225,3 +329,22 @@ public class AdminController : ControllerBase
 }
 
 public record SetRoleRequest(string Role);
+public record ResetPasswordRequest(string NewPassword);
+public record CreateUserRequest(
+    string FirstName,
+    string LastName,
+    string Email,
+    string Password,
+    string? Title,
+    string? GmcNumber,
+    string? GdcNumber,
+    Guid TenantId,
+    string? Role);
+public record UpdateUserRequest(
+    string FirstName,
+    string LastName,
+    string Email,
+    string? Title,
+    string? GmcNumber,
+    string? GdcNumber,
+    string? Role);

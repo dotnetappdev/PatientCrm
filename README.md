@@ -6,17 +6,177 @@ A modern, multi-tenant Patient Clinical Records Management System for NHS Englan
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Features](#features)
-4. [Technology Stack](#technology-stack)
-5. [Getting Started](#getting-started)
-6. [Configuration](#configuration)
-7. [Authentication and Security](#authentication-and-security)
-8. [User Roles](#user-roles)
-9. [API Reference](#api-reference)
-10. [Seed Data](#seed-data)
-11. [Deployment](#deployment)
+1. [Screenshots](#screenshots)
+2. [Overview](#overview)
+3. [Architecture](#architecture)
+4. [Features](#features)
+5. [Technology Stack](#technology-stack)
+6. [Getting Started](#getting-started)
+7. [Configuration](#configuration)
+8. [Authentication and Security](#authentication-and-security)
+9. [User Roles](#user-roles)
+10. [API Reference](#api-reference)
+11. [Seed Data](#seed-data)
+12. [Deployment](#deployment)
+
+---
+
+## Screenshots
+
+### Clinical Dashboard
+The main dashboard provides an at-a-glance overview of key metrics and upcoming clinical activity.
+
+![Dashboard](docs/screenshots/01_dashboard.png)
+
+### Patient Directory
+Searchable, paginated patient list with NHS/HSCNI number badges, blood group, region and status indicators.
+
+![Patient List](docs/screenshots/03_patient_list.png)
+
+### Register Patient
+Multi-section registration form covering personal details, NHS/HSCNI identifiers, contact, address, allergies, medications, emergency contact and GP information.
+
+![Register Patient](docs/screenshots/08_patient_register.png)
+
+### Patient Record — Overview
+Full patient record with tabs for Overview, Clinical Notes, Appointments, Prescriptions, Images/MRI and GP/Dental records. Active alerts and allergy warnings are prominently displayed.
+
+![Patient Details](docs/screenshots/04_patient_details.png)
+
+### Patient Record — Clinical Notes
+Chronological clinical notes with note type badges (Consultation, Prescription, Telephone, Results). Each note shows the date, clinician and full text.
+
+![Clinical Notes](docs/screenshots/11_patient_clinical_notes.png)
+
+### Patient Record — Prescriptions & Medication History
+Full prescription/medication history with active medication summary banner, status filter, controlled drug badges, repeat count display, and per-row **Reorder**, **Edit** and **Stop** actions. Patients and clinicians can request a repeat with one click.
+
+![Patient Prescriptions](docs/screenshots/21_patient_prescriptions.png)
+
+### Add / Edit Medication Dialog
+Prescribers can add new medications (or edit existing ones) from a modal on the patient record, specifying dosage, frequency, route, quantity, repeats authorised, SNOMED/dm+d codes, indication, patient instructions, and controlled drug flag.
+
+![Add Medication Dialog](docs/screenshots/22_add_medication_dialog.png)
+
+### Hospital Departments
+Hospital departments management with card view showing specialty type badge, active admission counts, ward count, head of department and phone extension. Create, edit and delete departments from a modal. Belfast HSCNI Trust ships with 8 seeded departments (Cardiology, Neurology, Oncology, Orthopaedics, A&E, Renal, Respiratory, ICU).
+
+![Hospital Departments](docs/screenshots/23_departments.png)
+
+### Department Detail — Admissions & Wards
+Department detail view with active admissions table (ward/bed, admission type badge, expected discharge date, consultant), Wards tab, and All Admissions history. Discharge button marks the patient as discharged and records the date.
+
+![Department Detail](docs/screenshots/24_department_detail.png)
+
+### Patient Record — Hospital Admissions Tab
+New "Hospital Admissions" tab on the patient record shows all admissions with department, ward, admission/discharge dates, type badge, status and diagnosis. Links through to the department detail page.
+
+![Patient Admissions Tab](docs/screenshots/25_patient_admissions_tab.png)
+
+### Patient Portal — Dashboard
+Patients log in with the `Patient` role to see their personal health dashboard: upcoming appointments, active medications summary, key personal details and active allergy/alert banners. All clinical admin navigation is hidden; only My Health Record nav is shown.
+
+![Patient Portal Dashboard](docs/screenshots/26_patient_portal_dashboard.png)
+
+### Patient Portal — Medications & Repeat Prescriptions
+Patients can view their full prescription history with dosage, route, instructions, and repeats remaining. A **Request Repeat** button lets them submit a repeat prescription request directly (calls the existing reorder endpoint).
+
+![Patient Portal Prescriptions](docs/screenshots/27_patient_portal_prescriptions.png)
+
+### Patient Portal — Clinical Notes (Shared Only)
+Patients see their shared clinical notes. Confidential notes (mental health assessments, safeguarding, sensitive advisories) are never shown — a clear notice explains that some notes are kept private by the clinician.
+
+![Patient Portal Notes](docs/screenshots/28_patient_portal_notes.png)
+
+### Confidential Note — Clinician View
+When a GP, dentist or consultant creates or edits a clinical note, a clearly labelled **Confidential** checkbox marks the note private. Confidential notes show a 🔒 amber warning badge on the patient record and are stripped at the API layer before any patient-role response.
+
+![Confidential Note Badge](docs/screenshots/29_confidential_note_badge.png)
+
+### Appointments — Type Filter
+Day-view appointment schedule with Type and Status filter dropdowns. Filtering by In Person, Telephone or Video narrows the list instantly without a page reload.
+
+![Appointments Filtered](docs/screenshots/12_appointments_filtered.png)
+
+### Super Admin Dashboard
+Global administration overview showing tenant counts, user counts and a summary table of all client organisations.
+
+![Admin Dashboard](docs/screenshots/02_admin_dashboard.png)
+
+### Client Management
+Full list of NHS, HSCNI and private practice tenants with organisation type, ODS code, location, active status, search and pagination.
+
+![Admin Clients](docs/screenshots/06_admin_clients.png)
+
+### Add Client
+Form for registering a new healthcare organisation with client type, NHS/HSCNI classification, ODS code, contact details and address.
+
+![Add Client](docs/screenshots/10_client_add.png)
+
+### Edit Client
+Pre-populated edit form for an existing client organisation.
+
+![Edit Client](docs/screenshots/09_client_edit.png)
+
+### User Management — Full CRUD
+System-wide user list with search, Status and 2FA filters, pagination, and **Create User**, **Edit** and **Enable/Disable** actions.
+
+![Admin Users CRUD](docs/screenshots/19_users_with_crud.png)
+
+### Create User
+Register a new clinical or administrative user with role assignment (GP, Nurse, Dentist, Receptionist, TenantAdmin, SuperAdmin) and GMC/GDC registration numbers.
+
+![Create User](docs/screenshots/17_user_create.png)
+
+### Edit User & Reset Password
+Edit a user's profile details and role, plus a dedicated section to reset their password — all on one page.
+
+![Edit User](docs/screenshots/18_user_edit.png)
+
+### Patient Edit
+Edit all fields of an existing patient record — demographics, NHS/HSCNI identifiers, contact, address, allergies, medications, emergency contact, GP details, and consent flags.
+
+![Patient Edit](docs/screenshots/14_patient_edit.png)
+
+### Book Appointment
+Full appointment booking form with date, time, duration picker, appointment type (In Person / Telephone / Video Call / Home Visit), discipline, reason, location/room, video call link, urgency flag and patient notification.
+
+![Book Appointment](docs/screenshots/15_appointment_book.png)
+
+### Appointments — Book Button
+Day-view appointments with the **Book Appointment** button and Type / Status filter dropdowns.
+
+![Appointments with Book button](docs/screenshots/16_appointments_with_book_btn.png)
+
+### Admin Settings — Email, SMS & Video
+Settings page for SMTP email notifications, Twilio/GOV.UK Notify SMS, and Google Meet / Zoom / Teams video consultation integration, including appointment invite templates.
+
+![Admin Settings](docs/screenshots/20_admin_settings.png)
+
+### Letters CMS — Clinical Correspondence
+Letter list with status badges, create/edit modal with template selector, HTML body editor and letterhead preview.
+
+![Letters](docs/screenshots/28_letters.png)
+
+### Letter View — NHS Letterhead Layout
+Full letterhead with practice logo, address block, doctor name and title, subject line, body HTML and print/PDF export.
+
+![Letter View](docs/screenshots/29_letter_view.png)
+
+### Patient Portal — My Letters
+Patient's own visible letters with letterhead view and print button.
+
+![Portal Letters](docs/screenshots/30_portal_letters.png)
+
+### Patient Record — Interactive SVG Tooth Chart
+Colour-coded 32-tooth SVG chart with click-to-edit modal, filling/crown material selectors, BPE grid and dental history summary.
+
+![Dental Chart](docs/screenshots/31_dental_chart.png)
+
+### Book Appointment — Video Link Generator
+Platform selector (Google Meet, Zoom, Microsoft Teams, AccuBook/NHS Video) with optional passcode generation.
+
+![Video Link](docs/screenshots/32_video_link.png)
 
 ---
 
@@ -71,17 +231,35 @@ The solution contains four projects:
 - Multi-tenant patient registration with NHS/HSCNI identifiers
 - GP Records with QOF registers (diabetes, hypertension, AF, asthma, COPD, mental health)
 - Dental Records with charting, BPE scores and treatment history
+- **Interactive SVG Tooth Chart**: colour-coded 32-tooth chart (healthy, decay, filled, crown, root canal, implant, abscess, missing/extracted, watch & wait) with click-to-edit modal for all tooth flags, filling/crown material, treatment plan, review date, BPE sextant grid
 - Clinical notes using SOAP format with SNOMED CT coding
-- Prescription management with repeat prescription support
-- Appointment scheduling with telephone, in-person and video types
+- Prescription management with repeat prescription support and one-click reorder (with repeat count tracking)
+- **Appointment scheduling** with telephone, in-person and video types; **video link generator** with platform selector (Google Meet, Zoom, Microsoft Teams, AccuBook/NHS Video) and optional 6-digit passcode
+- **Letters CMS**: create, edit, send and archive clinical correspondence with HTML rich-text body, NHS letterhead layout (practice logo, name, address, doctor title), template library (Referral, Discharge, Appointment, Results, General), patient-visibility flag and print/PDF export
 - Patient images and attachments (X-rays, reports, referral letters)
 - Patient alerts with severity levels (Critical, High, Medium, Low)
+- **Hospital departments** with ward management: 25 specialty types (Cardiology, Neurology, Oncology, Orthopaedics, A&E, ICU and more)
+- **Patient admissions**: assign patients to departments/wards with consultant, bed number, admission type, discharge dates and diagnosis tracking
+- Realistic seed data for Belfast HSCNI Trust with 8 hospital departments and 11 wards
+- **Confidential clinical notes**: GPs, dentists and consultants can mark notes as confidential (mental health, safeguarding, sensitive advisories) — these are never visible to the patient, with a clear 🔒 amber badge in the clinician UI
+
+### Patient Portal
+
+- Patients log in with the `Patient` role and see only their own data — a dedicated `/portal/*` area with a separate sidebar navigation
+- **My Dashboard**: upcoming appointments, active medications, stats, allergy banner, GP details
+- **My Appointments**: upcoming and past appointments with video call join links and passcode display
+- **My Medications**: full prescription history, dosage, instructions, repeat count; one-click **Request Repeat** button
+- **My Notes**: non-confidential clinical notes only — a clear notice explains that some notes may be kept private by the clinician
+- **My Letters**: patient-visible clinical correspondence with NHS letterhead view and print/PDF export
+- **My Profile**: full personal details (NHS number, contact, GP registration, emergency contact, blood group, consent preferences) — read-only
+- Admin/GP can enable portal access per patient with a single click from the patient record (**🔗 Enable Portal Access** button) which creates an Identity account with the `Patient` role linked to the patient record
 
 ### Administration
 
 - Super Admin and Tenant Admin roles with full RBAC
 - Multi-tenant client (practice) management
-- User management with role assignment
+- User management with role assignment (GP, Dentist, Consultant, Nurse, Receptionist, TenantAdmin, SuperAdmin)
+- SMTP email, SMS (Twilio / GOV.UK Notify / TextLocal) and video consultation settings
 - Audit logging for all record changes
 
 ### Security

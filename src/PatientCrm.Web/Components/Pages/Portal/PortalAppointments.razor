@@ -1,0 +1,100 @@
+@page "/portal/appointments"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Patient")]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Entities
+@using PatientCrm.Core.Enums
+@inject PatientApiClient Api
+
+<PageTitle>My Appointments - PatientCRM</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">My Appointments</h1>
+        <a href="/portal" style="color: var(--text-muted); font-size: 0.875rem;">← Back to my health record</a>
+    </div>
+</div>
+
+@if (loading)
+{
+    <div style="text-align: center; padding: 4rem; color: var(--text-muted);">Loading...</div>
+}
+else if (!appointments.Any())
+{
+    <div class="card" style="text-align: center; padding: 3rem; color: var(--text-muted);">No appointments on record.</div>
+}
+else
+{
+    <div class="tabs" style="margin-bottom: 1.5rem;">
+        <a class="tab-item @(tab == "upcoming" ? "active" : "")" @onclick='() => tab = "upcoming"'>Upcoming (@upcoming.Count)</a>
+        <a class="tab-item @(tab == "past" ? "active" : "")" @onclick='() => tab = "past"'>Past (@past.Count)</a>
+    </div>
+
+    var list = tab == "upcoming" ? upcoming : past;
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr><th>Date & Time</th><th>Appointment</th><th>Clinician</th><th>Type</th><th>Status</th><th>Location</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var a in list)
+                {
+                    <tr>
+                        <td>
+                            <div class="fw-600">@a.StartTime.ToString("dd MMM yyyy")</div>
+                            <div class="patient-meta">@a.StartTime.ToString("HH:mm") – @a.EndTime.ToString("HH:mm")</div>
+                        </td>
+                        <td>
+                            <div class="fw-600">@a.Title</div>
+                            @if (!string.IsNullOrEmpty(a.Reason))
+                            { <div class="patient-meta">@a.Reason</div> }
+                        </td>
+                        <td>@(a.Provider?.FullName ?? "—")</td>
+                        <td><span class="badge badge-blue">@a.AppointmentType</span></td>
+                        <td>
+                            <span class="badge @(a.Status switch {
+                                AppointmentStatus.Confirmed => "badge-green",
+                                AppointmentStatus.Completed => "badge-gray",
+                                AppointmentStatus.Cancelled => "badge-red",
+                                AppointmentStatus.DidNotAttend => "badge-red",
+                                _ => "badge-blue"
+                            })">@a.Status</span>
+                        </td>
+                        <td style="font-size: 0.8125rem;">
+                            @if (!string.IsNullOrEmpty(a.VideoCallLink))
+                            {
+                                <a href="@a.VideoCallLink" target="_blank" class="btn btn-sm btn-primary">Join Video Call</a>
+                                @if (!string.IsNullOrEmpty(a.VideoCallPasscode))
+                                {
+                                    <div class="small text-muted">Passcode: @a.VideoCallPasscode</div>
+                                }
+                            }
+                            else
+                            { @(a.Location ?? "—") }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<Appointment> appointments = new();
+    private List<Appointment> upcoming = new();
+    private List<Appointment> past = new();
+    private string tab = "upcoming";
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var patient = await Api.GetMyPortalRecordAsync();
+        if (patient != null)
+        {
+            appointments = patient.Appointments.OrderByDescending(a => a.StartTime).ToList();
+            upcoming = appointments.Where(a => a.StartTime >= DateTime.UtcNow && a.Status != AppointmentStatus.Cancelled).OrderBy(a => a.StartTime).ToList();
+            past = appointments.Where(a => a.StartTime < DateTime.UtcNow || a.Status == AppointmentStatus.Completed || a.Status == AppointmentStatus.Cancelled).OrderByDescending(a => a.StartTime).ToList();
+        }
+        loading = false;
+    }
+}

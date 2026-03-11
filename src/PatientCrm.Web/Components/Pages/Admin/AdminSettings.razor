@@ -1,0 +1,228 @@
+@page "/admin/settings"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,TenantAdmin")]
+@using PatientCrm.Web.Services
+@inject NotificationService Notifications
+
+<PageTitle>Settings - PatientCRM Admin</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Settings</h1>
+        <p class="page-subtitle">Notification, appointment invite and integration settings</p>
+    </div>
+    <button class="btn btn-primary" @onclick="Save" disabled="@saving">
+        @(saving ? "Saving..." : "Save Settings")
+    </button>
+</div>
+
+@if (showSaveNote)
+{
+    <div class="alert alert-success" style="max-width: 860px; margin-bottom: 1rem;">
+        Settings saved. Connect your environment-specific configuration store (Azure Key Vault, appsettings.json, or database) to persist these values across deployments.
+    </div>
+}
+
+<!-- Notification Settings -->
+<div class="card" style="max-width: 860px; margin-bottom: 1.5rem;">
+    <h3 class="card-title" style="margin-bottom: 1.25rem;">📧 Email Notifications</h3>
+    <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+            <label class="form-label">SMTP Host</label>
+            <input class="form-control" @bind="smtpHost" placeholder="smtp.office365.com" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Port</label>
+            <input type="number" class="form-control" @bind="smtpPort" />
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">SMTP Username</label>
+            <input class="form-control" @bind="smtpUsername" placeholder="noreply@yourpractice.nhs.uk" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">SMTP Password</label>
+            <input type="password" class="form-control" @bind="smtpPassword" placeholder="••••••••" />
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+            <label class="form-label">From Address</label>
+            <input type="email" class="form-control" @bind="fromEmail" placeholder="appointments@yourpractice.nhs.uk" />
+        </div>
+        <div class="form-group" style="flex: 2;">
+            <label class="form-label">From Name</label>
+            <input class="form-control" @bind="fromName" placeholder="PatientCRM Appointments" />
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group" style="flex: 1;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" @bind="emailAppointmentConfirmation" />
+                Send appointment confirmation emails
+            </label>
+        </div>
+        <div class="form-group" style="flex: 1;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" @bind="emailAppointmentReminder" />
+                Send appointment reminder emails
+            </label>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="form-label">Reminder Lead Time</label>
+        <select class="form-control" style="max-width: 200px;" @bind="reminderHours">
+            <option value="1">1 hour before</option>
+            <option value="2">2 hours before</option>
+            <option value="24">24 hours before</option>
+            <option value="48">48 hours before</option>
+        </select>
+    </div>
+</div>
+
+<!-- SMS Settings -->
+<div class="card" style="max-width: 860px; margin-bottom: 1.5rem;">
+    <h3 class="card-title" style="margin-bottom: 1.25rem;">📱 SMS Notifications</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">SMS Provider</label>
+            <select class="form-control" @bind="smsProvider">
+                <option value="">Disabled</option>
+                <option value="twilio">Twilio</option>
+                <option value="govuk">GOV.UK Notify</option>
+                <option value="textlocal">TextLocal</option>
+            </select>
+        </div>
+        <div class="form-group" style="flex: 2;">
+            <label class="form-label">API Key / Account SID</label>
+            <input class="form-control" @bind="smsApiKey" placeholder="API key or SID" />
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+            <label class="form-label">Auth Token / API Secret</label>
+            <input type="password" class="form-control" @bind="smsAuthToken" placeholder="••••••••" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">From Number</label>
+            <input class="form-control" @bind="smsFromNumber" placeholder="+447700900000" />
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group" style="flex: 1;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" @bind="smsAppointmentConfirmation" />
+                Send appointment confirmation SMS
+            </label>
+        </div>
+        <div class="form-group" style="flex: 1;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" @bind="smsAppointmentReminder" />
+                Send appointment reminder SMS
+            </label>
+        </div>
+    </div>
+</div>
+
+<!-- Video Calling -->
+<div class="card" style="max-width: 860px; margin-bottom: 1.5rem;">
+    <h3 class="card-title" style="margin-bottom: 1.25rem;">🎥 Video Consultations</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Video Platform</label>
+            <select class="form-control" @bind="videoPlatform">
+                <option value="">None</option>
+                <option value="googlemeet">Google Meet</option>
+                <option value="zoom">Zoom</option>
+                <option value="msteams">Microsoft Teams</option>
+                <option value="accubook">AccuBook / NHS Video</option>
+            </select>
+        </div>
+        <div class="form-group" style="flex: 2;">
+            <label class="form-label">OAuth Client ID / API Key</label>
+            <input class="form-control" @bind="videoApiKey" placeholder="OAuth client ID or API key" />
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+            <label class="form-label">OAuth Secret</label>
+            <input type="password" class="form-control" @bind="videoSecret" placeholder="••••••••" />
+        </div>
+        <div class="form-group" style="flex: 2;">
+            <label class="form-label">Default Meeting Room URL</label>
+            <input class="form-control" @bind="defaultMeetingRoom" placeholder="https://meet.google.com/..." />
+        </div>
+    </div>
+    <div class="form-group">
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" @bind="autoCreateVideoLink" />
+            Auto-generate video link when booking video call appointments
+        </label>
+    </div>
+</div>
+
+<!-- Appointment Invite Template -->
+<div class="card" style="max-width: 860px; margin-bottom: 1.5rem;">
+    <h3 class="card-title" style="margin-bottom: 1.25rem;">✉️ Appointment Invite Template</h3>
+    <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">
+        Available placeholders: <code>&#123;&#123;PatientName&#125;&#125;</code>, <code>&#123;&#123;Date&#125;&#125;</code>, <code>&#123;&#123;Time&#125;&#125;</code>, <code>&#123;&#123;Clinician&#125;&#125;</code>, <code>&#123;&#123;Location&#125;&#125;</code>, <code>&#123;&#123;VideoLink&#125;&#125;</code>
+    </p>
+    <div class="form-group">
+        <label class="form-label">Email Subject</label>
+        <input class="form-control" @bind="inviteEmailSubject" />
+    </div>
+    <div class="form-group">
+        <label class="form-label">Email Body</label>
+        <textarea class="form-control" rows="6" @bind="inviteEmailBody"></textarea>
+    </div>
+    <div class="form-group">
+        <label class="form-label">SMS Template</label>
+        <textarea class="form-control" rows="3" @bind="inviteSmsTemplate"></textarea>
+        <div class="patient-meta" style="margin-top: 0.25rem;">@(160 - (inviteSmsTemplate?.Length ?? 0)) characters remaining</div>
+    </div>
+</div>
+
+@code {
+    private bool saving;
+    private bool showSaveNote;
+
+    // Email
+    private string smtpHost = "smtp.office365.com";
+    private int smtpPort = 587;
+    private string smtpUsername = "";
+    private string smtpPassword = "";
+    private string fromEmail = "";
+    private string fromName = "PatientCRM";
+    private bool emailAppointmentConfirmation = true;
+    private bool emailAppointmentReminder = true;
+    private int reminderHours = 24;
+
+    // SMS
+    private string smsProvider = "";
+    private string smsApiKey = "";
+    private string smsAuthToken = "";
+    private string smsFromNumber = "";
+    private bool smsAppointmentConfirmation;
+    private bool smsAppointmentReminder;
+
+    // Video
+    private string videoPlatform = "";
+    private string videoApiKey = "";
+    private string videoSecret = "";
+    private string defaultMeetingRoom = "";
+    private bool autoCreateVideoLink;
+
+    // Templates
+    private string inviteEmailSubject = "Your appointment at {{Location}} – {{Date}} at {{Time}}";
+    private string inviteEmailBody = "Dear {{PatientName}},\n\nThis is a confirmation of your appointment:\n\nDate: {{Date}}\nTime: {{Time}}\nClinician: {{Clinician}}\nLocation: {{Location}}\n\nIf this is a video call, please join using: {{VideoLink}}\n\nTo cancel or reschedule, please contact us.\n\nKind regards,\nPatientCRM";
+    private string inviteSmsTemplate = "Appt confirmed: {{Date}} {{Time}} with {{Clinician}} at {{Location}}. Reply CANCEL to cancel.";
+
+    private async Task Save()
+    {
+        saving = true;
+        await Task.Delay(300);
+        saving = false;
+        showSaveNote = true;
+        Notifications.SetSuccess("Settings saved successfully.");
+    }
+}

@@ -20,12 +20,16 @@ public static class DatabaseSeeder
 
         await SeedPatientsAsync(context, tenants);
 
+        await SeedPatientPortalUsersAsync(context, userManager, tenants);
+
+        await SeedLetterTemplatesAsync(context, tenants);
+
         await context.SaveChangesAsync();
     }
 
     private static async Task SeedRolesAsync(RoleManager<ApplicationRole> roleManager)
     {
-        string[] roles = ["SuperAdmin", "TenantAdmin", "GP", "Dentist", "Consultant", "Nurse", "Receptionist", "ReadOnly"];
+        string[] roles = ["SuperAdmin", "TenantAdmin", "GP", "Dentist", "Consultant", "Nurse", "Receptionist", "ReadOnly", "Patient"];
         foreach (var role in roles)
         {
             if (!await roleManager.RoleExistsAsync(role))
@@ -475,6 +479,7 @@ public static class DatabaseSeeder
         await SeedAppointmentsAsync(context, nhsTenant, hscniTenant, dentalTenant, healthCentre);
         await SeedPrescriptionsAsync(context, nhsTenant, hscniTenant);
         await SeedAlertsAsync(context, nhsTenant);
+        await SeedDepartmentsAsync(context, hscniTenant);
     }
 
     private static async Task SeedClinicalNotesAsync(ApplicationDbContext context, Tenant nhsTenant, Tenant hscniTenant)
@@ -839,6 +844,375 @@ public static class DatabaseSeeder
         };
 
         context.PatientAlerts.AddRange(alerts);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedDepartmentsAsync(ApplicationDbContext context, Tenant hscniTenant)
+    {
+        if (await context.Departments.AnyAsync())
+            return;
+
+        var consultant = await context.Users.FirstOrDefaultAsync(u => u.Email == "consultant.mclaughlin@belfast.hscni.net");
+
+        // Belfast HSCNI Trust departments
+        var cardiology = new Department
+        {
+            Id = Guid.Parse("d0000001-dddd-dddd-dddd-dddddddddddd"),
+            TenantId = hscniTenant.Id,
+            Name = "Cardiology",
+            DepartmentType = DepartmentType.Cardiology,
+            Code = "CARD",
+            Description = "Specialist cardiac care including interventional cardiology, electrophysiology and heart failure management.",
+            Location = "Block A, Level 3",
+            PhoneExtension = "3100",
+            HeadOfDepartment = "Prof. Aoife McLaughlin",
+            IsActive = true
+        };
+
+        var neurology = new Department
+        {
+            Id = Guid.Parse("d0000002-dddd-dddd-dddd-dddddddddddd"),
+            TenantId = hscniTenant.Id,
+            Name = "Neurology",
+            DepartmentType = DepartmentType.Neurology,
+            Code = "NEUR",
+            Description = "Diagnosis and management of disorders of the nervous system including stroke, epilepsy and multiple sclerosis.",
+            Location = "Block B, Level 2",
+            PhoneExtension = "3200",
+            HeadOfDepartment = "Dr. Conor Hughes",
+            IsActive = true
+        };
+
+        var oncology = new Department
+        {
+            Id = Guid.Parse("d0000003-dddd-dddd-dddd-dddddddddddd"),
+            TenantId = hscniTenant.Id,
+            Name = "Oncology",
+            DepartmentType = DepartmentType.Oncology,
+            Code = "ONCO",
+            Description = "Comprehensive cancer care including medical oncology, chemotherapy and haematological malignancies.",
+            Location = "Block C, Level 1",
+            PhoneExtension = "3300",
+            HeadOfDepartment = "Dr. Mary Brennan",
+            IsActive = true
+        };
+
+        var orthopaedics = new Department
+        {
+            Id = Guid.Parse("d0000004-dddd-dddd-dddd-dddddddddddd"),
+            TenantId = hscniTenant.Id,
+            Name = "Orthopaedics & Trauma",
+            DepartmentType = DepartmentType.Orthopaedics,
+            Code = "ORTH",
+            Description = "Surgical and non-surgical treatment of musculoskeletal conditions, fractures and joint replacements.",
+            Location = "Block D, Level 2",
+            PhoneExtension = "3400",
+            HeadOfDepartment = "Mr. Declan Farrell",
+            IsActive = true
+        };
+
+        var emergency = new Department
+        {
+            Id = Guid.Parse("d0000005-dddd-dddd-dddd-dddddddddddd"),
+            TenantId = hscniTenant.Id,
+            Name = "Emergency & Acute Medicine",
+            DepartmentType = DepartmentType.Emergency,
+            Code = "A&E",
+            Description = "24/7 emergency assessment and treatment of life-threatening and urgent conditions. Major Trauma Centre.",
+            Location = "Ground Floor, Main Entrance",
+            PhoneExtension = "3500",
+            HeadOfDepartment = "Dr. Niall Brady",
+            IsActive = true
+        };
+
+        var renal = new Department
+        {
+            Id = Guid.Parse("d0000006-dddd-dddd-dddd-dddddddddddd"),
+            TenantId = hscniTenant.Id,
+            Name = "Renal Medicine",
+            DepartmentType = DepartmentType.Renal,
+            Code = "RENAL",
+            Description = "Management of acute and chronic kidney disease including dialysis, transplant and CKD clinics.",
+            Location = "Block A, Level 1",
+            PhoneExtension = "3600",
+            HeadOfDepartment = "Dr. Sinéad Kelly",
+            IsActive = true
+        };
+
+        var respiratory = new Department
+        {
+            Id = Guid.Parse("d0000007-dddd-dddd-dddd-dddddddddddd"),
+            TenantId = hscniTenant.Id,
+            Name = "Respiratory Medicine",
+            DepartmentType = DepartmentType.Respiratory,
+            Code = "RESP",
+            Description = "Specialist care for asthma, COPD, lung cancer, sleep disorders and respiratory infections.",
+            Location = "Block B, Level 3",
+            PhoneExtension = "3700",
+            HeadOfDepartment = "Dr. Fionnuala Gallagher",
+            IsActive = true
+        };
+
+        var icu = new Department
+        {
+            Id = Guid.Parse("d0000008-dddd-dddd-dddd-dddddddddddd"),
+            TenantId = hscniTenant.Id,
+            Name = "Intensive Care Unit",
+            DepartmentType = DepartmentType.IntensiveCare,
+            Code = "ICU",
+            Description = "Level 3 critical care providing organ support and intensive monitoring for critically ill patients.",
+            Location = "Block A, Level 2",
+            PhoneExtension = "3800",
+            HeadOfDepartment = "Dr. Brendan Quinlan",
+            IsActive = true
+        };
+
+        var departments = new List<Department> { cardiology, neurology, oncology, orthopaedics, emergency, renal, respiratory, icu };
+        context.Departments.AddRange(departments);
+        await context.SaveChangesAsync();
+
+        // Wards
+        var wards = new List<Ward>
+        {
+            // Cardiology wards
+            new() { Id = Guid.Parse("e0000001-eeee-eeee-eeee-eeeeeeeeeeee"), TenantId = hscniTenant.Id, DepartmentId = cardiology.Id, Name = "Coronary Care Unit (CCU)", Code = "CCU", BedCount = 12, Location = "Block A, Level 3 North", PhoneExtension = "3110" },
+            new() { Id = Guid.Parse("e0000002-eeee-eeee-eeee-eeeeeeeeeeee"), TenantId = hscniTenant.Id, DepartmentId = cardiology.Id, Name = "Cardiology Ward 3A", Code = "3A", BedCount = 28, Location = "Block A, Level 3 South", PhoneExtension = "3120" },
+            // Neurology wards
+            new() { Id = Guid.Parse("e0000003-eeee-eeee-eeee-eeeeeeeeeeee"), TenantId = hscniTenant.Id, DepartmentId = neurology.Id, Name = "Stroke Unit", Code = "STROKE", BedCount = 20, Location = "Block B, Level 2 East", PhoneExtension = "3210" },
+            new() { Id = Guid.Parse("e0000004-eeee-eeee-eeee-eeeeeeeeeeee"), TenantId = hscniTenant.Id, DepartmentId = neurology.Id, Name = "Neurology Ward 2B", Code = "2B", BedCount = 24, Location = "Block B, Level 2 West", PhoneExtension = "3220" },
+            // Oncology wards
+            new() { Id = Guid.Parse("e0000005-eeee-eeee-eeee-eeeeeeeeeeee"), TenantId = hscniTenant.Id, DepartmentId = oncology.Id, Name = "Macmillan Oncology Ward", Code = "ONCO-W", BedCount = 30, Location = "Block C, Level 1 North", PhoneExtension = "3310" },
+            new() { Id = Guid.Parse("e0000006-eeee-eeee-eeee-eeeeeeeeeeee"), TenantId = hscniTenant.Id, DepartmentId = oncology.Id, Name = "Chemotherapy Day Unit", Code = "CHEMO", BedCount = 16, Location = "Block C, Level 1 South", PhoneExtension = "3320" },
+            // Orthopaedics wards
+            new() { Id = Guid.Parse("e0000007-eeee-eeee-eeee-eeeeeeeeeeee"), TenantId = hscniTenant.Id, DepartmentId = orthopaedics.Id, Name = "Trauma Ward 4C", Code = "4C", BedCount = 32, Location = "Block D, Level 2 North", PhoneExtension = "3410" },
+            new() { Id = Guid.Parse("e0000008-eeee-eeee-eeee-eeeeeeeeeeee"), TenantId = hscniTenant.Id, DepartmentId = orthopaedics.Id, Name = "Elective Orthopaedics Ward 4D", Code = "4D", BedCount = 28, Location = "Block D, Level 2 South", PhoneExtension = "3420" },
+            // Emergency
+            new() { Id = Guid.Parse("e0000009-eeee-eeee-eeee-eeeeeeeeeeee"), TenantId = hscniTenant.Id, DepartmentId = emergency.Id, Name = "Majors Area", Code = "MAJ", BedCount = 20, Location = "Ground Floor East", PhoneExtension = "3510" },
+            new() { Id = Guid.Parse("e000000a-eeee-eeee-eeee-eeeeeeeeeeee"), TenantId = hscniTenant.Id, DepartmentId = emergency.Id, Name = "Resuscitation Bay", Code = "RESUS", BedCount = 6, Location = "Ground Floor Centre", PhoneExtension = "3520" },
+            // ICU
+            new() { Id = Guid.Parse("e000000b-eeee-eeee-eeee-eeeeeeeeeeee"), TenantId = hscniTenant.Id, DepartmentId = icu.Id, Name = "ICU Level 3", Code = "ICU-L3", BedCount = 10, Location = "Block A, Level 2", PhoneExtension = "3810" },
+        };
+
+        context.Wards.AddRange(wards);
+        await context.SaveChangesAsync();
+
+        // Patient admissions – link HSCNI patients to departments
+        var seamusId = Guid.Parse("aaaaaaa3-aaaa-aaaa-aaaa-aaaaaaaaaaaa");  // Seamus Murphy – cardiology
+        var siobhanId = Guid.Parse("aaaaaaa8-aaaa-aaaa-aaaa-aaaaaaaaaaaa"); // Siobhan Doherty – renal (DM1)
+
+        var admissions = new List<PatientAdmission>
+        {
+            // Seamus Murphy – admitted to Cardiology (AF / HF management)
+            new()
+            {
+                TenantId = hscniTenant.Id,
+                PatientId = seamusId,
+                DepartmentId = cardiology.Id,
+                WardId = Guid.Parse("e0000001-eeee-eeee-eeee-eeeeeeeeeeee"), // CCU
+                ConsultantId = consultant?.Id,
+                BedNumber = "CCU-4",
+                AdmissionType = AdmissionType.Emergency,
+                Status = AdmissionStatus.Active,
+                AdmissionDate = DateTime.UtcNow.AddDays(-5),
+                ExpectedDischargeDate = DateTime.UtcNow.AddDays(3),
+                AdmissionReason = "Fast atrial fibrillation with haemodynamic compromise",
+                DiagnosisOnAdmission = "Paroxysmal AF with rapid ventricular response. Known heart failure (EF 38%).",
+                ReferringGpName = "Dr. Patrick O'Neil",
+                ReferringGpOdsCode = "ZT001",
+                TriageNotes = "Heart rate 148 bpm, BP 90/60, O2 sats 92% on air. Commenced on rate-control and anticoagulation.",
+                TreatmentSummary = "IV bisoprolol, LMWH, echocardiogram arranged. Cardiology registrar review daily."
+            },
+            // Siobhan Doherty – outpatient nephrology clinic (DM1 CKD)
+            new()
+            {
+                TenantId = hscniTenant.Id,
+                PatientId = siobhanId,
+                DepartmentId = renal.Id,
+                WardId = null,
+                ConsultantId = consultant?.Id,
+                AdmissionType = AdmissionType.OutPatient,
+                Status = AdmissionStatus.Discharged,
+                AdmissionDate = DateTime.UtcNow.AddDays(-30),
+                DischargeDate = DateTime.UtcNow.AddDays(-30),
+                AdmissionReason = "Diabetic nephropathy monitoring – CKD stage 3a",
+                DiagnosisOnAdmission = "Type 1 Diabetes with microalbuminuria, eGFR 52.",
+                DiagnosisOnDischarge = "CKD stage 3a, recommend ACEi titration, annual renal USS.",
+                DischargeNotes = "Ramipril increased to 10mg OD. Repeat bloods in 3 months. Next nephrology appointment 6 months.",
+                ReferringGpName = "Dr. Patrick O'Neil"
+            },
+            // Robert Blackwood (NHS) – previously admitted to Cardiology for AF ablation
+            new()
+            {
+                TenantId = hscniTenant.Id,
+                PatientId = Guid.Parse("aaaaaaa5-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                DepartmentId = cardiology.Id,
+                WardId = Guid.Parse("e0000002-eeee-eeee-eeee-eeeeeeeeeeee"), // Cardiology Ward 3A
+                ConsultantId = consultant?.Id,
+                BedNumber = "3A-12",
+                AdmissionType = AdmissionType.Elective,
+                Status = AdmissionStatus.Discharged,
+                AdmissionDate = DateTime.UtcNow.AddMonths(-2),
+                DischargeDate = DateTime.UtcNow.AddMonths(-2).AddDays(2),
+                AdmissionReason = "Elective cardioversion for persistent AF",
+                DiagnosisOnAdmission = "Persistent AF, on anticoagulation.",
+                DiagnosisOnDischarge = "Successful DC cardioversion to sinus rhythm. Continue warfarin (target INR 2-3). Bisoprolol continued.",
+                DischargeNotes = "Discharged to GP care. Repeat ECG at 4 weeks. Follow-up cardiology OPA in 3 months.",
+                ReferringGpName = "Dr. James Smith",
+                ReferringGpOdsCode = "A81001"
+            }
+        };
+
+        context.PatientAdmissions.AddRange(admissions);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedPatientPortalUsersAsync(ApplicationDbContext context, UserManager<ApplicationUser> userManager, List<Tenant> tenants)
+    {
+        // Create demo patient portal accounts linked to existing patient records
+        var nhsTenant = tenants.First(t => t.TenantType == TenantType.NhsEngland && t.ClientType == ClientType.GpPractice);
+
+        var portalAccounts = new[]
+        {
+            // Development/demo portal accounts only — never use these credentials in production.
+            // In production, use a password-reset email flow to let patients set their own password.
+            (Email: "william.taylor@portal.nhs.uk",   Password: "Patient@2024!",
+             FirstName: "William", LastName: "Taylor",
+             PatientId: Guid.Parse("aaaaaaa1-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), TenantId: nhsTenant.Id),
+
+            (Email: "margaret.hughes@portal.nhs.uk",  Password: "Patient@2024!",
+             FirstName: "Margaret", LastName: "Hughes",
+             PatientId: Guid.Parse("aaaaaaa2-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), TenantId: nhsTenant.Id),
+        };
+
+        foreach (var pa in portalAccounts)
+        {
+            if (await userManager.FindByEmailAsync(pa.Email) != null) continue;
+
+            var user = new ApplicationUser
+            {
+                UserName = pa.Email, Email = pa.Email,
+                FirstName = pa.FirstName, LastName = pa.LastName, Title = "",
+                TenantId = pa.TenantId, EmailConfirmed = true, IsActive = true
+            };
+            var result = await userManager.CreateAsync(user, pa.Password);
+            if (!result.Succeeded) continue;
+
+            await userManager.AddToRoleAsync(user, "Patient");
+
+            // Link user to their patient record
+            var patient = await context.Patients.FindAsync(pa.PatientId);
+            if (patient != null)
+            {
+                patient.PatientUserId = user.Id;
+                context.Patients.Update(patient);
+            }
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedLetterTemplatesAsync(ApplicationDbContext context, List<Tenant> tenants)
+    {
+        if (await context.LetterTemplates.AnyAsync()) return;
+
+        var nhsTenant = tenants.First(t => t.TenantType == TenantType.NhsEngland && t.ClientType == ClientType.GpPractice);
+
+        var templates = new List<LetterTemplate>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(), TenantId = nhsTenant.Id,
+                Title = "GP Referral Letter",
+                Category = "Referral",
+                Subject = "Urgent Referral – {{FirstName}} {{LastName}} (NHS {{NhsNumber}})",
+                Body = """
+<p>Dear Colleague,</p>
+<p>I am writing to refer <strong>{{FirstName}} {{LastName}}</strong>, date of birth {{DateOfBirth}}, NHS Number {{NhsNumber}}, who is registered at our practice.</p>
+<p><strong>Reason for Referral:</strong><br/>Please insert clinical details here.</p>
+<p><strong>Current Medications:</strong><br/>Please insert current medications here.</p>
+<p><strong>Relevant History:</strong><br/>Please insert relevant history here.</p>
+<p>I would be grateful for your assessment and management. Please do not hesitate to contact me should you require further information.</p>
+<p>Yours sincerely,</p>
+<p>{{DoctorName}}<br/>{{DepartmentName}}</p>
+""",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(), TenantId = nhsTenant.Id,
+                Title = "Discharge Summary",
+                Category = "Discharge",
+                Subject = "Discharge Summary – {{FirstName}} {{LastName}}",
+                Body = """
+<p>Dear Dr {{RegisteredGP}},</p>
+<p>I am writing to inform you that your patient <strong>{{FirstName}} {{LastName}}</strong> (NHS: {{NhsNumber}}) was discharged from our care on {{Date}}.</p>
+<p><strong>Admission Diagnosis:</strong><br/>Please insert diagnosis here.</p>
+<p><strong>Procedures Performed:</strong><br/>Please insert procedures here.</p>
+<p><strong>Discharge Medications:</strong><br/>Please insert discharge medications here.</p>
+<p><strong>Follow-up Arrangements:</strong><br/>Please insert follow-up plan here.</p>
+<p>Yours sincerely,</p>
+<p>{{DoctorName}}<br/>{{DepartmentName}}</p>
+""",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(), TenantId = nhsTenant.Id,
+                Title = "Appointment Confirmation",
+                Category = "Appointment",
+                Subject = "Appointment Confirmation – {{FirstName}} {{LastName}}",
+                Body = """
+<p>Dear {{FirstName}},</p>
+<p>We are writing to confirm your appointment at {{PracticeName}}.</p>
+<p><strong>Date:</strong> {{AppointmentDate}}<br/>
+<strong>Time:</strong> {{AppointmentTime}}<br/>
+<strong>Clinician:</strong> {{DoctorName}}<br/>
+<strong>Location:</strong> {{PracticeAddress}}</p>
+<p>Please bring your NHS card and a list of current medications. If you are unable to attend, please contact us at least 24 hours in advance so we can offer the appointment to another patient.</p>
+<p>Kind regards,</p>
+<p>{{PracticeName}}</p>
+""",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(), TenantId = nhsTenant.Id,
+                Title = "Test Results Letter",
+                Category = "Results",
+                Subject = "Test Results – {{FirstName}} {{LastName}} (NHS {{NhsNumber}})",
+                Body = """
+<p>Dear {{FirstName}},</p>
+<p>I am writing regarding the results of your recent tests.</p>
+<p><strong>Test Results Summary:</strong><br/>Please insert results here.</p>
+<p><strong>Our Recommendation:</strong><br/>Please insert recommendations here.</p>
+<p>If you have any concerns or questions, please do not hesitate to contact the practice.</p>
+<p>Yours sincerely,</p>
+<p>{{DoctorName}}<br/>{{DepartmentName}}<br/>{{PracticeName}}</p>
+""",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(), TenantId = nhsTenant.Id,
+                Title = "Specialist Clinic Letter",
+                Category = "General",
+                Subject = "Specialist Clinic Review – {{FirstName}} {{LastName}}",
+                Body = """
+<p>Dear {{FirstName}} {{LastName}},</p>
+<p>Thank you for attending the {{DepartmentName}} clinic on {{Date}}.</p>
+<p><strong>Clinical Assessment:</strong><br/>Please insert clinical assessment here.</p>
+<p><strong>Management Plan:</strong><br/>Please insert management plan here.</p>
+<p><strong>Medications Commenced / Changed:</strong><br/>Please insert medication changes here.</p>
+<p><strong>Follow-up:</strong><br/>Please insert follow-up plan here.</p>
+<p>A copy of this letter has been sent to your GP.</p>
+<p>Yours sincerely,</p>
+<p>{{DoctorName}}<br/>{{DepartmentName}}</p>
+""",
+                IsActive = true
+            }
+        };
+
+        context.LetterTemplates.AddRange(templates);
         await context.SaveChangesAsync();
     }
 }

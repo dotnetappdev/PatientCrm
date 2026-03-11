@@ -1,0 +1,133 @@
+@page "/portal/profile"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Patient")]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Entities
+@using PatientCrm.Core.Enums
+@inject PatientApiClient Api
+
+<PageTitle>My Profile - PatientCRM</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">My Profile &amp; Personal Details</h1>
+        <a href="/portal" style="color: var(--text-muted); font-size: 0.875rem;">← Back to my health record</a>
+    </div>
+</div>
+
+@if (loading)
+{
+    <div style="text-align: center; padding: 4rem; color: var(--text-muted);">Loading...</div>
+}
+else if (patient == null)
+{
+    <div class="alert alert-danger">No record found.</div>
+}
+else
+{
+    <div class="grid grid-2" style="gap: 1.5rem;">
+        <!-- Personal details -->
+        <div class="card">
+            <h3 class="card-title" style="margin-bottom: 1rem;">Personal Information</h3>
+            @Detail("Full Name", patient.FullName)
+            @Detail("Preferred Name", patient.PreferredName)
+            @Detail("Date of Birth", patient.DateOfBirth.ToString("dd MMMM yyyy"))
+            @Detail("Gender", patient.Gender.ToString())
+            @Detail("Gender Identity", patient.GenderIdentity)
+            @Detail("Ethnicity", patient.Ethnicity)
+            @Detail("Religion", patient.Religion)
+            @Detail("Preferred Language", patient.PreferredLanguage)
+            @if (patient.RequiresInterpreter)
+            { <div style="margin-top: 0.5rem;"><span class="badge badge-blue">Interpreter Required</span></div> }
+        </div>
+
+        <!-- NHS identifiers -->
+        <div class="card">
+            <h3 class="card-title" style="margin-bottom: 1rem;">NHS / HSCNI Identifiers</h3>
+            @Detail("NHS Number", patient.NhsNumber)
+            @Detail("HSCNI Number", patient.HscniNumber)
+            @Detail("CHI Number", patient.ChiNumber)
+            @Detail("Blood Group", patient.BloodGroup.ToString())
+            @Detail("Status", patient.Status.ToString())
+        </div>
+
+        <!-- Contact details -->
+        <div class="card">
+            <h3 class="card-title" style="margin-bottom: 1rem;">Contact Details</h3>
+            @Detail("Email", patient.Email)
+            @Detail("Phone", patient.PhoneNumber)
+            @Detail("Mobile", patient.MobileNumber)
+            @Detail("Address", string.Join(", ", new[] { patient.AddressLine1, patient.AddressLine2, patient.City, patient.County, patient.Postcode }.Where(s => !string.IsNullOrEmpty(s))))
+        </div>
+
+        <!-- GP Registration -->
+        <div class="card">
+            <h3 class="card-title" style="margin-bottom: 1rem;">GP Registration</h3>
+            @Detail("Registered GP", patient.RegisteredGpName)
+            @Detail("GP Practice", patient.RegisteredGpPractice)
+            @Detail("ODS Code", patient.RegisteredGpOdsCode)
+        </div>
+
+        <!-- Emergency contact -->
+        <div class="card">
+            <h3 class="card-title" style="margin-bottom: 1rem;">Emergency Contact</h3>
+            @Detail("Name", patient.EmergencyContactName)
+            @Detail("Relationship", patient.EmergencyContactRelationship)
+            @Detail("Phone", patient.EmergencyContactPhone)
+        </div>
+
+        <!-- Clinical summary (allergies/medications, read-only) -->
+        <div class="card">
+            <h3 class="card-title" style="margin-bottom: 1rem;">Clinical Summary</h3>
+            @if (!string.IsNullOrEmpty(patient.Allergies))
+            {
+                <div style="margin-bottom: 0.75rem;">
+                    <div class="patient-meta">Allergies</div>
+                    <div style="color: var(--danger, #ef4444); font-weight: 600; font-size: 0.875rem;">@patient.Allergies</div>
+                </div>
+            }
+            @Detail("Current Medications", patient.CurrentMedications)
+            @if (patient.MedicalAlerts != null)
+            { @Detail("Medical Alerts", patient.MedicalAlerts) }
+        </div>
+    </div>
+
+    <!-- Consent -->
+    <div class="card" style="margin-top: 1.5rem;">
+        <h3 class="card-title" style="margin-bottom: 1rem;">Consent Preferences</h3>
+        <div class="d-flex gap-4" style="flex-wrap: wrap;">
+            <div style="font-size: 0.875rem;"><span style="color: @(patient.ConsentToTreatment ? "var(--success,#22c55e)" : "var(--danger,#ef4444)")">@(patient.ConsentToTreatment ? "✓" : "✗")</span> Consent to Treatment</div>
+            <div style="font-size: 0.875rem;"><span style="color: @(patient.ConsentToDataSharing ? "var(--success,#22c55e)" : "var(--danger,#ef4444)")">@(patient.ConsentToDataSharing ? "✓" : "✗")</span> Consent to Data Sharing</div>
+            <div style="font-size: 0.875rem;"><span style="color: @(patient.ConsentToMarketing ? "var(--success,#22c55e)" : "var(--danger,#ef4444)")">@(patient.ConsentToMarketing ? "✓" : "✗")</span> Consent to Marketing</div>
+        </div>
+        @if (patient.ConsentDate.HasValue)
+        { <div class="patient-meta" style="margin-top: 0.5rem;">Consent recorded: @patient.ConsentDate.Value.ToString("dd MMM yyyy")</div> }
+        <p style="margin-top: 0.75rem; font-size: 0.8125rem; color: var(--text-muted);">To update your consent preferences, please contact your GP practice or clinic.</p>
+    </div>
+}
+
+@code {
+    private Patient? patient;
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        patient = await Api.GetMyPortalRecordAsync();
+        loading = false;
+    }
+
+    private RenderFragment Detail(string label, string? value) => __builder =>
+    {
+        if (string.IsNullOrEmpty(value)) return;
+        __builder.OpenElement(0, "div");
+        __builder.AddAttribute(1, "style", "margin-bottom: 0.5rem;");
+        __builder.OpenElement(2, "div");
+        __builder.AddAttribute(3, "class", "patient-meta");
+        __builder.AddContent(4, label);
+        __builder.CloseElement();
+        __builder.OpenElement(5, "div");
+        __builder.AddAttribute(6, "style", "font-size: 0.875rem; font-weight: 500;");
+        __builder.AddContent(7, value);
+        __builder.CloseElement();
+        __builder.CloseElement();
+    };
+}

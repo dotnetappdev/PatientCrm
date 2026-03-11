@@ -38,6 +38,16 @@ else
         </div>
         <div class="d-flex gap-2">
             <a href="/patients/@patient.Id/edit" class="btn btn-secondary">Edit</a>
+            @if (patient.PatientUserId == null)
+            {
+                <button class="btn btn-secondary" @onclick="EnablePortalAccess" title="Create a patient portal login account for this patient">
+                    🔗 Enable Portal Access
+                </button>
+            }
+            else
+            {
+                <span class="badge badge-green" style="padding: 0.4rem 0.75rem; font-size: 0.8rem;">✓ Portal Active</span>
+            }
         </div>
     </div>
 
@@ -62,11 +72,12 @@ else
         <a class="tab-item @(activeTab == "notes" ? "active" : "")" href="#" @onclick="@(() => activeTab = "notes")" @onclick:preventDefault>Clinical Notes (@patient.ClinicalNotes.Count)</a>
         <a class="tab-item @(activeTab == "appointments" ? "active" : "")" href="#" @onclick="@(() => activeTab = "appointments")" @onclick:preventDefault>Appointments (@patient.Appointments.Count)</a>
         <a class="tab-item @(activeTab == "prescriptions" ? "active" : "")" href="#" @onclick="@(() => activeTab = "prescriptions")" @onclick:preventDefault>Prescriptions (@patient.Prescriptions.Count)</a>
+        <a class="tab-item @(activeTab == "admissions" ? "active" : "")" href="#" @onclick="@(() => activeTab = "admissions")" @onclick:preventDefault>Hospital Admissions (@patient.Admissions.Count)</a>
         <a class="tab-item @(activeTab == "images" ? "active" : "")" href="#" @onclick="@(() => activeTab = "images")" @onclick:preventDefault>Images &amp; MRI (@patient.MedicalImages.Count)</a>
         @if (patient.GpRecord != null)
         { <a class="tab-item @(activeTab == "gp" ? "active" : "")" href="#" @onclick="@(() => activeTab = "gp")" @onclick:preventDefault>GP Record</a> }
         @if (patient.DentalRecord != null)
-        { <a class="tab-item @(activeTab == "dental" ? "active" : "")" href="#" @onclick="@(() => activeTab = "dental")" @onclick:preventDefault>Dental</a> }
+        { <a class="tab-item @(activeTab == "dental" ? "active" : "")" href="#" @onclick="@(async () => { activeTab = "dental"; await LoadDentalDataAsync(); })" @onclick:preventDefault>Dental</a> }
     </div>
 
     <!-- Overview Tab -->
@@ -134,10 +145,20 @@ else
         {
             @foreach (var note in patient.ClinicalNotes.OrderByDescending(n => n.NoteDate))
             {
-                <div class="card" style="margin-bottom: 1rem;">
+                <div class="card" style="margin-bottom: 1rem; @(note.IsConfidential ? "border-left: 3px solid var(--warning, #f59e0b);" : "")">
                     <div class="d-flex justify-between align-items-start">
                         <div>
-                            <div class="fw-600">@note.Title</div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-600">@note.Title</span>
+                                @if (note.IsConfidential)
+                                {
+                                    <span class="badge" style="background: rgba(245,158,11,0.15); color: #f59e0b; font-size: 0.7rem;">
+                                        🔒 Confidential — not visible to patient
+                                    </span>
+                                }
+                                @if (note.IsLocked)
+                                { <span class="badge badge-gray" style="font-size: 0.7rem;">Locked</span> }
+                            </div>
                             <div class="patient-meta">@note.NoteDate.ToString("dd MMM yyyy HH:mm") | @note.AuthorName | @note.Discipline</div>
                         </div>
                         <span class="badge badge-blue">@note.NoteType</span>
@@ -196,31 +217,170 @@ else
     <!-- Prescriptions Tab -->
     @if (activeTab == "prescriptions")
     {
+        var activeMeds = patient.Prescriptions.Where(p => p.Status == PatientCrm.Core.Enums.PrescriptionStatus.Active).ToList();
+        var controlledMeds = activeMeds.Where(p => p.IsControlledDrug).ToList();
+        <!-- Medication Summary Banner -->
+        @if (activeMeds.Any())
+        {
+            <div class="alert alert-info" style="margin-bottom: 1rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div>
+                    <strong>Current Medications:</strong>
+                    @string.Join(", ", activeMeds.Select(m => $"{m.MedicationName} {m.Dosage}"))
+                    @if (controlledMeds.Any())
+                    { <span class="badge badge-red" style="margin-left: 0.5rem;">@controlledMeds.Count Controlled Drug(s)</span> }
+                </div>
+            </div>
+        }
+
+        <div class="d-flex justify-between align-items-center" style="margin-bottom: 1rem;">
+            <div class="d-flex gap-2">
+                <select class="form-control" style="max-width:180px;" @bind="rxStatusFilter">
+                    <option value="">All Medications</option>
+                    <option value="Active">Active</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Discontinued</option>
+                    <option value="OnHold">On Hold</option>
+                </select>
+            </div>
+            <button class="btn btn-primary btn-sm" @onclick="() => showAddPrescription = true">+ Add Medication</button>
+        </div>
+
         <div class="table-container">
             <table>
                 <thead>
-                    <tr><th>Medication</th><th>Dosage</th><th>Frequency</th><th>Route</th><th>Date</th><th>Status</th></tr>
+                    <tr><th>Medication</th><th>Dosage / Freq</th><th>Repeats</th><th>Prescribed</th><th>Ends</th><th>Status</th><th></th></tr>
                 </thead>
                 <tbody>
-                    @foreach (var rx in patient.Prescriptions.OrderByDescending(p => p.PrescribedDate))
+                    @{
+                        var filteredRx = string.IsNullOrEmpty(rxStatusFilter)
+                            ? patient.Prescriptions.OrderByDescending(p => p.PrescribedDate).ToList()
+                            : patient.Prescriptions.Where(p => p.Status.ToString() == rxStatusFilter).OrderByDescending(p => p.PrescribedDate).ToList();
+                    }
+                    @foreach (var rx in filteredRx)
                     {
                         <tr>
                             <td>
-                                <div class="fw-600">@rx.MedicationName</div>
-                                <div class="patient-meta">@rx.GenericName</div>
+                                <div class="fw-600">@rx.MedicationName @if (rx.IsControlledDrug) { <span class="badge badge-red" style="font-size:0.65rem;">CD</span> }</div>
+                                <div class="patient-meta">@rx.GenericName | @rx.Route</div>
+                                @if (!string.IsNullOrEmpty(rx.Indication))
+                                { <div class="patient-meta">For: @rx.Indication</div> }
                             </td>
-                            <td>@rx.Dosage</td>
-                            <td>@rx.Frequency</td>
-                            <td>@rx.Route</td>
+                            <td>
+                                <div>@rx.Dosage</div>
+                                <div class="patient-meta">@rx.Frequency</div>
+                                @if (rx.QuantityIssued.HasValue)
+                                { <div class="patient-meta">Qty: @rx.QuantityIssued @rx.Unit</div> }
+                            </td>
+                            <td>
+                                @if (rx.RepeatsRemaining.HasValue)
+                                {
+                                    <span class="badge @(rx.RepeatsRemaining > 0 ? "badge-green" : "badge-red")">
+                                        @rx.RepeatsRemaining / @rx.Repeats remaining
+                                    </span>
+                                }
+                                else { <span class="patient-meta">—</span> }
+                            </td>
                             <td>@rx.PrescribedDate.ToString("dd MMM yyyy")</td>
-                            <td><span class="badge @(rx.Status == PatientCrm.Core.Enums.PrescriptionStatus.Active ? "badge-green" : "badge-gray")">@rx.Status</span></td>
+                            <td>
+                                @if (rx.EndDate.HasValue)
+                                { @rx.EndDate.Value.ToString("dd MMM yyyy") }
+                                else { <span class="patient-meta">Ongoing</span> }
+                            </td>
+                            <td>
+                                <span class="badge @(rx.Status == PatientCrm.Core.Enums.PrescriptionStatus.Active ? "badge-green" : rx.Status == PatientCrm.Core.Enums.PrescriptionStatus.Cancelled ? "badge-red" : "badge-gray")">
+                                    @(rx.Status == PatientCrm.Core.Enums.PrescriptionStatus.Cancelled ? "Discontinued" : rx.Status.ToString())
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    @if (rx.Status == PatientCrm.Core.Enums.PrescriptionStatus.Active)
+                                    {
+                                        <button class="btn btn-sm btn-primary" @onclick="() => RequestReorder(rx)"
+                                                title="@(rx.RepeatsRemaining.HasValue && rx.RepeatsRemaining <= 0 ? "No repeats remaining" : "Reorder this prescription")">
+                                            ↺ Reorder
+                                        </button>
+                                        <button class="btn btn-sm btn-secondary" @onclick="() => OpenEditPrescription(rx)">Edit</button>
+                                        <button class="btn btn-sm btn-secondary" style="color:var(--danger,#ef4444);" @onclick="() => DiscontinueRx(rx)">Stop</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-secondary" @onclick="() => OpenEditPrescription(rx)">View</button>
+                                    }
+                                </div>
+                            </td>
                         </tr>
                     }
-                    @if (!patient.Prescriptions.Any())
-                    { <tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">No prescriptions recorded.</td></tr> }
+                    @if (!filteredRx.Any())
+                    { <tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">No prescriptions recorded.</td></tr> }
                 </tbody>
             </table>
         </div>
+
+        @if (!string.IsNullOrEmpty(rxMessage))
+        { <div class="alert @(rxMessageIsError ? "alert-danger" : "alert-success")" style="margin-top:1rem;">@rxMessage</div> }
+    }
+
+    <!-- Hospital Admissions Tab -->
+    @if (activeTab == "admissions")
+    {
+        @if (patient.Admissions.Any())
+        {
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Department</th>
+                            <th>Ward / Bed</th>
+                            <th>Admitted</th>
+                            <th>Discharged</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Diagnosis</th>
+                            <th>Consultant</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var adm in patient.Admissions.OrderByDescending(a => a.AdmissionDate))
+                        {
+                            <tr>
+                                <td>
+                                    <a href="/departments/@adm.DepartmentId" style="color: var(--primary); font-weight: 600;">@(adm.Department?.Name ?? "—")</a>
+                                    <div class="patient-meta">@adm.Department?.DepartmentType</div>
+                                </td>
+                                <td>
+                                    <div>@(adm.Ward?.Name ?? "Unassigned")</div>
+                                    @if (!string.IsNullOrEmpty(adm.BedNumber))
+                                    { <div class="patient-meta">Bed @adm.BedNumber</div> }
+                                </td>
+                                <td>@adm.AdmissionDate.ToString("dd MMM yyyy")</td>
+                                <td>@(adm.DischargeDate.HasValue ? adm.DischargeDate.Value.ToString("dd MMM yyyy") : "—")</td>
+                                <td>
+                                    <span class="badge @(adm.AdmissionType == PatientCrm.Core.Enums.AdmissionType.Emergency ? "badge-red" : "badge-blue")">@adm.AdmissionType</span>
+                                </td>
+                                <td>
+                                    <span class="badge @(adm.Status == PatientCrm.Core.Enums.AdmissionStatus.Active ? "badge-green" : "badge-gray")">@adm.Status</span>
+                                </td>
+                                <td style="font-size: 0.8125rem; max-width: 200px;">
+                                    @(adm.DiagnosisOnAdmission ?? adm.AdmissionReason)
+                                    @if (!string.IsNullOrEmpty(adm.DiagnosisOnDischarge))
+                                    { <div class="patient-meta">Discharge: @adm.DiagnosisOnDischarge</div> }
+                                </td>
+                                <td style="font-size: 0.8125rem;">@(adm.Consultant?.FullName ?? adm.ReferringGpName ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="card" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🏥</div>
+                <div>No hospital admissions recorded for this patient.</div>
+                <a href="/departments" class="btn btn-secondary btn-sm" style="margin-top: 1rem;">Go to Departments</a>
+            </div>
+        }
     }
 
     <!-- Images Tab -->
@@ -281,6 +441,137 @@ else
         </div>
     }
 
+    <!-- Dental Chart Tab -->
+    @if (activeTab == "dental")
+    {
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div class="d-flex justify-between" style="margin-bottom: 1rem;">
+                <h3 class="card-title">Interactive Tooth Chart</h3>
+                <button class="btn btn-sm btn-secondary" @onclick="LoadDentalDataAsync">↺ Refresh</button>
+            </div>
+
+            <!-- Legend -->
+            <div class="d-flex gap-2" style="flex-wrap: wrap; margin-bottom: 1rem; font-size: 0.8rem;">
+                <span><span style="display:inline-block; width:12px; height:12px; background:#f9fafb; border:1px solid #ccc; border-radius:2px;"></span> Healthy</span>
+                <span><span style="display:inline-block; width:12px; height:12px; background:#6b7280; border-radius:2px;"></span> Missing/Extracted</span>
+                <span><span style="display:inline-block; width:12px; height:12px; background:#ef4444; border-radius:2px;"></span> Decay</span>
+                <span><span style="display:inline-block; width:12px; height:12px; background:#fbbf24; border-radius:2px;"></span> Filled</span>
+                <span><span style="display:inline-block; width:12px; height:12px; background:#3b82f6; border-radius:2px;"></span> Crown</span>
+                <span><span style="display:inline-block; width:12px; height:12px; background:#8b5cf6; border-radius:2px;"></span> Root Canal</span>
+                <span><span style="display:inline-block; width:12px; height:12px; background:#14b8a6; border-radius:2px;"></span> Implant</span>
+                <span><span style="display:inline-block; width:12px; height:12px; background:#f97316; border-radius:2px;"></span> Abscess</span>
+                <span><span style="display:inline-block; width:12px; height:12px; background:#fef08a; border-radius:2px;"></span> Watch &amp; Wait</span>
+            </div>
+
+            <!-- SVG Tooth Chart -->
+            <svg width="700" height="200" viewBox="0 0 700 200" style="display:block; margin: 0 auto;">
+                <!-- Upper arch label -->
+                <text x="10" y="45" font-size="11" fill="#6b7280">Upper</text>
+                <!-- Lower arch label -->
+                <text x="10" y="155" font-size="11" fill="#6b7280">Lower</text>
+
+                @{
+                    // Upper arch: teeth 1-16 (UR 1-8, UL 9-16), displayed right to left for UR then left to right for UL
+                    // Row y=20, tooth height=40
+                    // Lower arch: teeth 17-32 (LL 17-24, LR 25-32)
+                    // Row y=130
+                    int[] upperTeeth = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16];
+                    int[] lowerTeeth = [32,31,30,29,28,27,26,25,24,23,22,21,20,19,18,17];
+                    int startX = 40;
+                    int toothW = 38;
+                    int toothH = 40;
+                    int upperY = 20;
+                    int lowerY = 130;
+                    int gap = 2;
+                }
+
+                @for (int i = 0; i < upperTeeth.Length; i++)
+                {
+                    var tNum = upperTeeth[i];
+                    var x = startX + i * (toothW + gap);
+                    var tooth = toothRecords.FirstOrDefault(t => t.ToothNumber == tNum);
+                    var fill = GetToothFill(tooth);
+                    var capturedNum = tNum;
+                    <g @onclick="() => OpenToothModal(capturedNum)" style="cursor:pointer;">
+                        <rect x="@x" y="@upperY" width="@toothW" height="@toothH" fill="@fill" stroke="#94a3b8" stroke-width="1" rx="4"/>
+                        <text x="@(x + toothW/2)" y="@(upperY + toothH + 14)" font-size="9" text-anchor="middle" fill="#6b7280">@tNum</text>
+                        @if (tooth?.IsMissing == true || tooth?.IsExtracted == true)
+                        {
+                            <line x1="@(x+6)" y1="@(upperY+6)" x2="@(x+toothW-6)" y2="@(upperY+toothH-6)" stroke="#374151" stroke-width="2"/>
+                            <line x1="@(x+toothW-6)" y1="@(upperY+6)" x2="@(x+6)" y2="@(upperY+toothH-6)" stroke="#374151" stroke-width="2"/>
+                        }
+                    </g>
+                }
+
+                @for (int i = 0; i < lowerTeeth.Length; i++)
+                {
+                    var tNum = lowerTeeth[i];
+                    var x = startX + i * (toothW + gap);
+                    var tooth = toothRecords.FirstOrDefault(t => t.ToothNumber == tNum);
+                    var fill = GetToothFill(tooth);
+                    var capturedNum = tNum;
+                    <g @onclick="() => OpenToothModal(capturedNum)" style="cursor:pointer;">
+                        <text x="@(x + toothW/2)" y="@(lowerY - 4)" font-size="9" text-anchor="middle" fill="#6b7280">@tNum</text>
+                        <rect x="@x" y="@lowerY" width="@toothW" height="@toothH" fill="@fill" stroke="#94a3b8" stroke-width="1" rx="4"/>
+                        @if (tooth?.IsMissing == true || tooth?.IsExtracted == true)
+                        {
+                            <line x1="@(x+6)" y1="@(lowerY+6)" x2="@(x+toothW-6)" y2="@(lowerY+toothH-6)" stroke="#374151" stroke-width="2"/>
+                            <line x1="@(x+toothW-6)" y1="@(lowerY+6)" x2="@(x+6)" y2="@(lowerY+toothH-6)" stroke="#374151" stroke-width="2"/>
+                        }
+                    </g>
+                }
+
+                <!-- Midline -->
+                <line x1="350" y1="10" x2="350" y2="190" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4"/>
+            </svg>
+        </div>
+
+        <!-- BPE Grid -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <h3 class="card-title" style="margin-bottom: 1rem;">Basic Periodontal Examination (BPE)</h3>
+            @if (dentalRecord != null)
+            {
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    @{
+                        var bpe = dentalRecord.BasicPeriodontalExamination?.Split(',') ?? new string[6];
+                        string[] sextantLabels = ["UR", "UA", "UL", "LL", "LA", "LR"];
+                    }
+                    @for (int s = 0; s < 6; s++)
+                    {
+                        var label = sextantLabels[s];
+                        var val = s < bpe.Length ? (bpe[s]?.Trim() ?? "") : "";
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.75rem; color: #6b7280; margin-bottom: 0.25rem;">@label</div>
+                            <div style="width: 48px; height: 48px; border: 2px solid #94a3b8; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; font-weight: 700; background: var(--card-bg);">
+                                @val
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Dental History Summary -->
+        @if (dentalRecord != null)
+        {
+            <div class="card">
+                <h3 class="card-title" style="margin-bottom: 1rem;">Dental History</h3>
+                <div class="detail-grid">
+                    @if (dentalRecord.LastExaminationDate.HasValue)
+                    { <div class="detail-label">Last Exam</div><div class="detail-value">@dentalRecord.LastExaminationDate.Value.ToString("dd MMM yyyy")</div> }
+                    @if (dentalRecord.LastHygieneAppointment.HasValue)
+                    { <div class="detail-label">Last Hygiene</div><div class="detail-value">@dentalRecord.LastHygieneAppointment.Value.ToString("dd MMM yyyy")</div> }
+                    @if (dentalRecord.LastXRayDate.HasValue)
+                    { <div class="detail-label">Last X-Ray</div><div class="detail-value">@dentalRecord.LastXRayDate.Value.ToString("dd MMM yyyy")</div> }
+                    @if (!string.IsNullOrEmpty(dentalRecord.PeriodontalStatus))
+                    { <div class="detail-label">Periodontal Status</div><div class="detail-value">@dentalRecord.PeriodontalStatus</div> }
+                    @if (!string.IsNullOrEmpty(dentalRecord.OralHygieneSummary))
+                    { <div class="detail-label">Oral Hygiene</div><div class="detail-value">@dentalRecord.OralHygieneSummary</div> }
+                </div>
+            </div>
+        }
+    }
+
     <!-- Add Note Modal -->
     @if (showAddNote)
     {
@@ -338,6 +629,15 @@ else
                     <label class="form-label">SNOMED Code</label>
                     <input class="form-control" @bind="newNote.SnomedCode" placeholder="e.g. 44054006" />
                 </div>
+                <div class="form-group" style="margin-top: 0.5rem;">
+                    <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.25); border-radius: 8px;">
+                        <input type="checkbox" @bind="newNote.IsConfidential" style="margin-top: 2px; flex-shrink: 0;" />
+                        <div>
+                            <div style="font-weight: 600; font-size: 0.875rem; color: #f59e0b;">🔒 Confidential note — not visible to patient</div>
+                            <div style="font-size: 0.8125rem; color: var(--text-muted); margin-top: 2px;">Use for mental health assessments, safeguarding concerns, substance misuse, sensitive test results, or any note the clinician needs to keep private from the patient's portal view.</div>
+                        </div>
+                    </label>
+                </div>
                 <div class="d-flex justify-between" style="margin-top: 1rem;">
                     <button class="btn btn-secondary" @onclick="() => showAddNote = false">Cancel</button>
                     <button class="btn btn-primary" @onclick="SaveNote">Save Note</button>
@@ -381,6 +681,197 @@ else
             </div>
         </div>
     }
+
+    <!-- Add / Edit Prescription Modal -->
+    @if (showAddPrescription || editingPrescription != null)
+    {
+        var isEdit = editingPrescription != null;
+        var rx = isEdit ? editingPrescription! : newPrescription;
+        <div class="modal-backdrop open">
+            <div class="modal" style="max-width: 760px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">@(isEdit ? "Edit Prescription" : "Add Medication")</h3>
+                    <button class="btn-icon" @onclick="() => { showAddPrescription = false; editingPrescription = null; rxFormError = null; }">&#x2715;</button>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label class="form-label">Medication Name *</label>
+                        <input class="form-control" @bind="rx.MedicationName" placeholder="e.g. Atorvastatin" />
+                    </div>
+                    <div class="form-group" style="flex: 2;">
+                        <label class="form-label">Generic Name</label>
+                        <input class="form-control" @bind="rx.GenericName" placeholder="Generic / BNF name" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Dosage *</label>
+                        <input class="form-control" @bind="rx.Dosage" placeholder="e.g. 40mg" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Frequency *</label>
+                        <input class="form-control" @bind="rx.Frequency" placeholder="e.g. Once daily" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Route *</label>
+                        <select class="form-control" @bind="rx.Route">
+                            <option value="Oral">Oral</option>
+                            <option value="Topical">Topical</option>
+                            <option value="Intravenous">Intravenous</option>
+                            <option value="Intramuscular">Intramuscular</option>
+                            <option value="Subcutaneous">Subcutaneous</option>
+                            <option value="Inhaled">Inhaled</option>
+                            <option value="Nasal">Nasal</option>
+                            <option value="Rectal">Rectal</option>
+                            <option value="Sublingual">Sublingual</option>
+                            <option value="Ophthalmic">Ophthalmic</option>
+                            <option value="Otic">Otic</option>
+                            <option value="Patch">Transdermal Patch</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" class="form-control" @bind="rx.QuantityIssued" placeholder="28" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Unit</label>
+                        <input class="form-control" @bind="rx.Unit" placeholder="tablets, ml, puffs..." />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Repeats Authorised</label>
+                        <input type="number" class="form-control" @bind="rx.Repeats" placeholder="6" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Repeats Remaining</label>
+                        <input type="number" class="form-control" @bind="rx.RepeatsRemaining" placeholder="6" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" class="form-control" @bind="rx.StartDate" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">End Date</label>
+                        <input type="date" class="form-control" @bind="rx.EndDate" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select class="form-control" @bind="rx.Status">
+                            @foreach (var s in Enum.GetValues<PatientCrm.Core.Enums.PrescriptionStatus>())
+                            { <option value="@s">@s</option> }
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Indication</label>
+                    <input class="form-control" @bind="rx.Indication" placeholder="Reason for prescribing..." />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Instructions for Patient</label>
+                    <textarea class="form-control" rows="2" @bind="rx.Instructions" placeholder="Take with food, avoid grapefruit..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">SNOMED Code</label>
+                        <input class="form-control" @bind="rx.SnomedCode" placeholder="e.g. 372912004" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">dm+d Code</label>
+                        <input class="form-control" @bind="rx.DmdCode" placeholder="NHS dm+d VMPP code" />
+                    </div>
+                    <div class="form-group" style="flex: 0; min-width: 160px; display: flex; align-items: flex-end; padding-bottom: 0.25rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" @bind="rx.IsControlledDrug" />
+                            Controlled Drug (CD)
+                        </label>
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(rxFormError))
+                { <div class="alert alert-danger">@rxFormError</div> }
+                <div class="d-flex justify-between" style="margin-top: 1rem;">
+                    <button class="btn btn-secondary" @onclick="() => { showAddPrescription = false; editingPrescription = null; rxFormError = null; }">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SavePrescription">@(isEdit ? "Save Changes" : "Add Prescription")</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Tooth Edit Modal -->
+    @if (showToothModal && editingTooth != null)
+    {
+        <div class="modal-backdrop open">
+            <div class="modal" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <h3 class="modal-title">Tooth @editingTooth.ToothNumber — @(editingTooth.ToothName ?? "Edit")</h3>
+                    <button class="btn-icon" @onclick="CloseToothModal">&#x2715;</button>
+                </div>
+
+                <div class="form-row" style="flex-wrap: wrap; gap: 0.5rem;">
+                    @foreach (var flag in ToothFlags)
+                    {
+                        <label style="display:flex; align-items:center; gap:0.25rem; min-width:160px; cursor:pointer; font-size:0.875rem;">
+                            <input type="checkbox" checked="@GetToothFlag(flag)" @onchange="e => SetToothFlag(flag, (bool)(e.Value ?? false))" />
+                            @flag
+                        </label>
+                    }
+                </div>
+
+                <div class="form-row" style="margin-top: 0.75rem;">
+                    <div class="form-group">
+                        <label class="form-label">Filling Type</label>
+                        <select class="form-control" @bind="editingTooth.FillingType">
+                            <option value="">— None —</option>
+                            <option value="Amalgam">Amalgam</option>
+                            <option value="Composite">Composite</option>
+                            <option value="GlassIonomer">Glass Ionomer</option>
+                            <option value="Gold">Gold</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Crown Material</label>
+                        <select class="form-control" @bind="editingTooth.CrownMaterial">
+                            <option value="">— None —</option>
+                            <option value="PFM">PFM</option>
+                            <option value="ZirconiaAll-Ceramic">Zirconia All-Ceramic</option>
+                            <option value="Metal">Metal</option>
+                            <option value="EMax">E.max</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-control" rows="2" @bind="editingTooth.Notes" placeholder="Clinical notes..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Treatment Plan</label>
+                    <textarea class="form-control" rows="2" @bind="editingTooth.TreatmentPlan" placeholder="Planned treatment..."></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Treatment Date</label>
+                        <input type="date" class="form-control" @bind="editingTooth.TreatmentDate" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Next Review Date</label>
+                        <input type="date" class="form-control" @bind="editingTooth.NextReviewDate" />
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(toothSaveError))
+                { <div class="alert alert-danger">@toothSaveError</div> }
+
+                <div class="d-flex justify-between" style="margin-top: 1rem;">
+                    <button class="btn btn-secondary" @onclick="CloseToothModal">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveToothAsync">Save Tooth</button>
+                </div>
+            </div>
+        </div>
+    }
 }
 
 @code {
@@ -400,6 +891,18 @@ else
     private string uploadImageType = "Xray";
     private string? uploadDescription;
     private Microsoft.AspNetCore.Components.Forms.IBrowserFile? uploadFile;
+
+    // Prescription state
+    private bool showAddPrescription;
+    private Prescription? editingPrescription;
+    private Prescription newPrescription = NewBlankPrescription();
+    private string rxStatusFilter = "";
+    private string? rxMessage;
+    private bool rxMessageIsError;
+    private string? rxFormError;
+
+    private static Prescription NewBlankPrescription() =>
+        new() { MedicationName = "", Dosage = "", Frequency = "", Route = "Oral" };
 
     protected override async Task OnParametersSetAsync()
     {
@@ -436,5 +939,231 @@ else
             patient = await Api.GetPatientAsync(Id);
         }
         else Notifications.SetError("Failed to upload image.");
+    }
+
+    private void OpenEditPrescription(Prescription rx)
+    {
+        editingPrescription = new Prescription
+        {
+            Id = rx.Id, TenantId = rx.TenantId, PatientId = rx.PatientId, PrescriberId = rx.PrescriberId,
+            MedicationName = rx.MedicationName, GenericName = rx.GenericName,
+            Dosage = rx.Dosage, Frequency = rx.Frequency, Route = rx.Route,
+            Instructions = rx.Instructions, QuantityIssued = rx.QuantityIssued, Unit = rx.Unit,
+            Repeats = rx.Repeats, RepeatsRemaining = rx.RepeatsRemaining,
+            PrescribedDate = rx.PrescribedDate, StartDate = rx.StartDate, EndDate = rx.EndDate,
+            Status = rx.Status, SnomedCode = rx.SnomedCode, DmdCode = rx.DmdCode,
+            IsControlledDrug = rx.IsControlledDrug, Indication = rx.Indication,
+            SideEffectsNoted = rx.SideEffectsNoted
+        };
+        rxFormError = null;
+    }
+
+    private async Task SavePrescription()
+    {
+        var rx = editingPrescription ?? newPrescription;
+        if (string.IsNullOrWhiteSpace(rx.MedicationName) || string.IsNullOrWhiteSpace(rx.Dosage) ||
+            string.IsNullOrWhiteSpace(rx.Frequency) || string.IsNullOrWhiteSpace(rx.Route))
+        {
+            rxFormError = "Medication name, dosage, frequency and route are required.";
+            return;
+        }
+        rxFormError = null;
+
+        bool ok;
+        if (editingPrescription != null)
+        {
+            ok = await Api.UpdatePrescriptionAsync(editingPrescription.Id, editingPrescription);
+        }
+        else
+        {
+            newPrescription.PatientId = Id;
+            var created = await Api.CreatePrescriptionAsync(newPrescription);
+            ok = created != null;
+        }
+
+        if (ok)
+        {
+            Notifications.SetSuccess(editingPrescription != null ? "Prescription updated." : "Prescription added.");
+            showAddPrescription = false;
+            editingPrescription = null;
+            newPrescription = NewBlankPrescription();
+            patient = await Api.GetPatientAsync(Id);
+        }
+        else rxFormError = "Failed to save prescription. Please try again.";
+    }
+
+    private async Task RequestReorder(Prescription rx)
+    {
+        rxMessage = null;
+        var (ok, error) = await Api.ReorderPrescriptionAsync(rx.Id);
+        if (ok)
+        {
+            rxMessageIsError = false;
+            rxMessage = $"Repeat request submitted for {rx.MedicationName}. Your prescription will be ready for collection within 2 working days.";
+            patient = await Api.GetPatientAsync(Id);
+        }
+        else
+        {
+            rxMessageIsError = true;
+            rxMessage = error ?? "Unable to reorder this prescription.";
+        }
+    }
+
+    private async Task DiscontinueRx(Prescription rx)
+    {
+        var copy = new Prescription
+        {
+            Id = rx.Id, TenantId = rx.TenantId, PatientId = rx.PatientId, PrescriberId = rx.PrescriberId,
+            MedicationName = rx.MedicationName, GenericName = rx.GenericName,
+            Dosage = rx.Dosage, Frequency = rx.Frequency, Route = rx.Route,
+            Instructions = rx.Instructions, QuantityIssued = rx.QuantityIssued, Unit = rx.Unit,
+            Repeats = rx.Repeats, RepeatsRemaining = rx.RepeatsRemaining,
+            PrescribedDate = rx.PrescribedDate, StartDate = rx.StartDate, EndDate = rx.EndDate,
+            SnomedCode = rx.SnomedCode, DmdCode = rx.DmdCode, IsControlledDrug = rx.IsControlledDrug,
+            Indication = rx.Indication, SideEffectsNoted = rx.SideEffectsNoted
+        };
+        var ok = await Api.DiscontinuePrescriptionAsync(rx.Id, copy);
+        if (ok)
+        {
+            Notifications.SetSuccess($"{rx.MedicationName} has been discontinued.");
+            patient = await Api.GetPatientAsync(Id);
+        }
+        else Notifications.SetError("Failed to discontinue prescription.");
+    }
+
+    private async Task EnablePortalAccess()
+    {
+        if (patient == null) return;
+        var ok = await Api.EnablePatientPortalAccessAsync(patient.Id);
+        if (ok)
+        {
+            Notifications.SetSuccess("Portal access enabled. The patient can now log in using their email address.");
+            patient = await Api.GetPatientAsync(Id);
+        }
+        else Notifications.SetError("Failed to enable portal access. Ensure the patient has an email address on record.");
+    }
+
+    // Dental chart state
+    private DentalRecord? dentalRecord;
+    private List<ToothRecord> toothRecords = new();
+    private bool showToothModal;
+    private ToothRecord? editingTooth;
+    private string? toothSaveError;
+
+    private static readonly string[] ToothFlags =
+    [
+        "IsMissing", "IsExtracted", "HasDecay", "HasFilling", "HasCrown",
+        "HasRootCanal", "HasAbscess", "HasImplant", "HasFracture",
+        "HasSensitivity", "HasGumDisease", "HasVeneer", "HasBridge",
+        "HasChipping", "HasWearing", "IsWatchAndWait"
+    ];
+
+    private async Task LoadDentalDataAsync()
+    {
+        if (patient == null) return;
+        dentalRecord = await Api.GetDentalRecordAsync(patient.Id);
+        toothRecords = await Api.GetToothRecordsAsync(patient.Id) ?? new();
+    }
+
+    private void OpenToothModal(int toothNumber)
+    {
+        var existing = toothRecords.FirstOrDefault(t => t.ToothNumber == toothNumber);
+        editingTooth = existing != null
+            ? new ToothRecord
+            {
+                Id = existing.Id, TenantId = existing.TenantId, DentalRecordId = existing.DentalRecordId,
+                ToothNumber = existing.ToothNumber, ToothName = existing.ToothName, IsPrimary = existing.IsPrimary,
+                IsMissing = existing.IsMissing, IsExtracted = existing.IsExtracted, HasDecay = existing.HasDecay,
+                HasFilling = existing.HasFilling, FillingType = existing.FillingType, HasCrown = existing.HasCrown,
+                CrownMaterial = existing.CrownMaterial, HasBridge = existing.HasBridge, HasVeneer = existing.HasVeneer,
+                HasImplant = existing.HasImplant, HasRootCanal = existing.HasRootCanal, HasAbscess = existing.HasAbscess,
+                HasFracture = existing.HasFracture, HasSensitivity = existing.HasSensitivity,
+                HasGumDisease = existing.HasGumDisease, HasChipping = existing.HasChipping, HasWearing = existing.HasWearing,
+                HasOverhang = existing.HasOverhang, IsWatchAndWait = existing.IsWatchAndWait,
+                Surfaces = existing.Surfaces, Notes = existing.Notes, TreatmentPlan = existing.TreatmentPlan,
+                TreatmentDate = existing.TreatmentDate, NextReviewDate = existing.NextReviewDate
+            }
+            : new ToothRecord { ToothNumber = toothNumber };
+        toothSaveError = null;
+        showToothModal = true;
+    }
+
+    private void CloseToothModal()
+    {
+        showToothModal = false;
+        editingTooth = null;
+    }
+
+    private bool GetToothFlag(string flag) => flag switch
+    {
+        "IsMissing" => editingTooth?.IsMissing ?? false,
+        "IsExtracted" => editingTooth?.IsExtracted ?? false,
+        "HasDecay" => editingTooth?.HasDecay ?? false,
+        "HasFilling" => editingTooth?.HasFilling ?? false,
+        "HasCrown" => editingTooth?.HasCrown ?? false,
+        "HasRootCanal" => editingTooth?.HasRootCanal ?? false,
+        "HasAbscess" => editingTooth?.HasAbscess ?? false,
+        "HasImplant" => editingTooth?.HasImplant ?? false,
+        "HasFracture" => editingTooth?.HasFracture ?? false,
+        "HasSensitivity" => editingTooth?.HasSensitivity ?? false,
+        "HasGumDisease" => editingTooth?.HasGumDisease ?? false,
+        "HasVeneer" => editingTooth?.HasVeneer ?? false,
+        "HasBridge" => editingTooth?.HasBridge ?? false,
+        "HasChipping" => editingTooth?.HasChipping ?? false,
+        "HasWearing" => editingTooth?.HasWearing ?? false,
+        "IsWatchAndWait" => editingTooth?.IsWatchAndWait ?? false,
+        _ => false
+    };
+
+    private void SetToothFlag(string flag, bool value)
+    {
+        if (editingTooth == null) return;
+        switch (flag)
+        {
+            case "IsMissing": editingTooth.IsMissing = value; break;
+            case "IsExtracted": editingTooth.IsExtracted = value; break;
+            case "HasDecay": editingTooth.HasDecay = value; break;
+            case "HasFilling": editingTooth.HasFilling = value; break;
+            case "HasCrown": editingTooth.HasCrown = value; break;
+            case "HasRootCanal": editingTooth.HasRootCanal = value; break;
+            case "HasAbscess": editingTooth.HasAbscess = value; break;
+            case "HasImplant": editingTooth.HasImplant = value; break;
+            case "HasFracture": editingTooth.HasFracture = value; break;
+            case "HasSensitivity": editingTooth.HasSensitivity = value; break;
+            case "HasGumDisease": editingTooth.HasGumDisease = value; break;
+            case "HasVeneer": editingTooth.HasVeneer = value; break;
+            case "HasBridge": editingTooth.HasBridge = value; break;
+            case "HasChipping": editingTooth.HasChipping = value; break;
+            case "HasWearing": editingTooth.HasWearing = value; break;
+            case "IsWatchAndWait": editingTooth.IsWatchAndWait = value; break;
+        }
+    }
+
+    private async Task SaveToothAsync()
+    {
+        if (editingTooth == null || patient == null) return;
+        toothSaveError = null;
+        var result = await Api.SaveToothRecordAsync(patient.Id, editingTooth);
+        if (result != null)
+        {
+            Notifications.SetSuccess($"Tooth {editingTooth.ToothNumber} saved.");
+            toothRecords = await Api.GetToothRecordsAsync(patient.Id) ?? new();
+            CloseToothModal();
+        }
+        else toothSaveError = "Failed to save tooth record.";
+    }
+
+    private static string GetToothFill(ToothRecord? tooth)
+    {
+        if (tooth == null) return "#f9fafb";
+        if (tooth.IsMissing || tooth.IsExtracted) return "#6b7280";
+        if (tooth.HasAbscess) return "#f97316";
+        if (tooth.HasDecay) return "#ef4444";
+        if (tooth.HasRootCanal) return "#8b5cf6";
+        if (tooth.HasCrown) return "#3b82f6";
+        if (tooth.HasImplant) return "#14b8a6";
+        if (tooth.HasFilling) return "#fbbf24";
+        if (tooth.IsWatchAndWait) return "#fef08a";
+        return "#f9fafb";
     }
 }

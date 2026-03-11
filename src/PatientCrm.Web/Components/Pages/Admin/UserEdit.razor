@@ -1,0 +1,197 @@
+@page "/admin/users/{Id:guid}/edit"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,TenantAdmin")]
+@using PatientCrm.Web.Services
+@inject PatientApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>Edit User - PatientCRM Admin</PageTitle>
+
+<div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+        <a href="/admin/users" style="color: var(--text-muted); text-decoration: none;">← Users</a>
+        <h1 class="page-title">Edit User</h1>
+    </div>
+</div>
+
+@if (user == null && !loaded)
+{
+    <div style="text-align: center; padding: 3rem; color: var(--text-muted);">Loading...</div>
+}
+else if (user == null)
+{
+    <div class="alert alert-danger">User not found.</div>
+}
+else
+{
+    <div class="card" style="max-width: 800px; margin-bottom: 1.5rem;">
+        <h3 class="card-title" style="margin-bottom: 1.25rem;">Profile</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">First Name *</label>
+                <input class="form-control" @bind="firstName" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Last Name *</label>
+                <input class="form-control" @bind="lastName" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Title</label>
+                <select class="form-control" @bind="title">
+                    <option value="">-- None --</option>
+                    <option value="Dr">Dr</option>
+                    <option value="Mr">Mr</option>
+                    <option value="Mrs">Mrs</option>
+                    <option value="Ms">Ms</option>
+                    <option value="Miss">Miss</option>
+                    <option value="Prof">Prof</option>
+                    <option value="Nurse">Nurse</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" @bind="email" />
+            </div>
+            <div class="form-group" style="flex: 2;">
+                <label class="form-label">Role</label>
+                <select class="form-control" @bind="role">
+                    <option value="Receptionist">Receptionist</option>
+                    <option value="Nurse">Nurse</option>
+                    <option value="GP">GP</option>
+                    <option value="Dentist">Dentist</option>
+                    <option value="Consultant">Consultant</option>
+                    <option value="TenantAdmin">Tenant Admin</option>
+                    <option value="SuperAdmin">Super Admin</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">GMC Number</label>
+                <input class="form-control" @bind="gmcNumber" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">GDC Number</label>
+                <input class="form-control" @bind="gdcNumber" />
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(profileError))
+        { <div class="alert alert-danger">@profileError</div> }
+
+        <div class="d-flex gap-2" style="margin-top: 1.5rem;">
+            <a href="/admin/users" class="btn btn-secondary">Cancel</a>
+            <button class="btn btn-primary" @onclick="SaveProfile" disabled="@savingProfile">
+                @(savingProfile ? "Saving..." : "Save Changes")
+            </button>
+        </div>
+    </div>
+
+    <!-- Password Reset -->
+    <div class="card" style="max-width: 800px;">
+        <h3 class="card-title" style="margin-bottom: 1.25rem;">Reset Password</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-control" @bind="newPassword" placeholder="Min 6 chars, uppercase, number, symbol" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Confirm Password</label>
+                <input type="password" class="form-control" @bind="confirmPassword" />
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(passwordError))
+        { <div class="alert alert-danger">@passwordError</div> }
+
+        <div class="d-flex gap-2" style="margin-top: 1rem;">
+            <button class="btn btn-primary" @onclick="ResetPassword" disabled="@savingPassword">
+                @(savingPassword ? "Resetting..." : "Reset Password")
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private UserDetailDto? user;
+    private bool loaded;
+
+    // Profile form
+    private string firstName = "";
+    private string lastName = "";
+    private string title = "";
+    private string email = "";
+    private string role = "";
+    private string gmcNumber = "";
+    private string gdcNumber = "";
+    private bool savingProfile;
+    private string? profileError;
+
+    // Password form
+    private string newPassword = "";
+    private string confirmPassword = "";
+    private bool savingPassword;
+    private string? passwordError;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        user = await Api.GetUserAsync(Id);
+        loaded = true;
+        if (user != null)
+        {
+            firstName = user.FirstName ?? "";
+            lastName = user.LastName ?? "";
+            title = user.Title ?? "";
+            email = user.Email ?? "";
+            role = user.Roles.FirstOrDefault() ?? "GP";
+            gmcNumber = user.GmcNumber ?? "";
+            gdcNumber = user.GdcNumber ?? "";
+        }
+    }
+
+    private async Task SaveProfile()
+    {
+        if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
+        { profileError = "First name and last name are required."; return; }
+        savingProfile = true;
+        profileError = null;
+        var ok = await Api.UpdateUserAsync(Id, new
+        {
+            FirstName = firstName,
+            LastName = lastName,
+            Email = email,
+            Title = title,
+            GmcNumber = gmcNumber,
+            GdcNumber = gdcNumber,
+            Role = role
+        });
+        savingProfile = false;
+        if (ok)
+        {
+            Notifications.SetSuccess("User profile updated.");
+            Nav.NavigateTo("/admin/users");
+        }
+        else profileError = "Failed to update profile.";
+    }
+
+    private async Task ResetPassword()
+    {
+        if (string.IsNullOrWhiteSpace(newPassword))
+        { passwordError = "New password is required."; return; }
+        if (newPassword != confirmPassword)
+        { passwordError = "Passwords do not match."; return; }
+        savingPassword = true;
+        passwordError = null;
+        var ok = await Api.ResetUserPasswordAsync(Id, newPassword);
+        savingPassword = false;
+        if (ok) Notifications.SetSuccess("Password reset successfully.");
+        else passwordError = "Failed to reset password. Ensure the password meets complexity requirements.";
+        newPassword = "";
+        confirmPassword = "";
+    }
+}

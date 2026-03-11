@@ -17,7 +17,13 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<MedicalImage> MedicalImages { get; }
     public IRepository<PatientAlert> PatientAlerts { get; }
     public IRepository<DentalRecord> DentalRecords { get; }
+    public IRepository<ToothRecord> ToothRecords { get; }
     public IRepository<GpRecord> GpRecords { get; }
+    public IRepository<Department> Departments { get; }
+    public IRepository<Ward> Wards { get; }
+    public IRepository<PatientAdmission> PatientAdmissions { get; }
+    public IRepository<Letter> Letters { get; }
+    public IRepository<LetterTemplate> LetterTemplates { get; }
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -29,7 +35,13 @@ public class UnitOfWork : IUnitOfWork
         MedicalImages = new Repository<MedicalImage>(context);
         PatientAlerts = new Repository<PatientAlert>(context);
         DentalRecords = new Repository<DentalRecord>(context);
+        ToothRecords = new Repository<ToothRecord>(context);
         GpRecords = new Repository<GpRecord>(context);
+        Departments = new Repository<Department>(context);
+        Wards = new Repository<Ward>(context);
+        PatientAdmissions = new Repository<PatientAdmission>(context);
+        Letters = new Repository<Letter>(context);
+        LetterTemplates = new Repository<LetterTemplate>(context);
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

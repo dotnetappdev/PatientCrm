@@ -1,0 +1,69 @@
+@page "/portal/notes"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Patient")]
+@using PatientCrm.Web.Services
+@using PatientCrm.Core.Entities
+@using PatientCrm.Core.Enums
+@inject PatientApiClient Api
+
+<PageTitle>My Clinical Notes - PatientCRM</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">My Clinical Notes</h1>
+        <a href="/portal" style="color: var(--text-muted); font-size: 0.875rem;">← Back to my health record</a>
+    </div>
+</div>
+
+<div class="alert alert-info" style="margin-bottom: 1.5rem; font-size: 0.875rem;">
+    ℹ️ These are your shared clinical notes. Some notes may be kept private by your clinician for clinical or safeguarding reasons and are not displayed here.
+</div>
+
+@if (loading)
+{
+    <div style="text-align: center; padding: 4rem; color: var(--text-muted);">Loading...</div>
+}
+else if (!notes.Any())
+{
+    <div class="card" style="text-align: center; padding: 3rem; color: var(--text-muted);">No shared clinical notes available.</div>
+}
+else
+{
+    @foreach (var note in notes)
+    {
+        <div class="card" style="margin-bottom: 1rem;">
+            <div class="d-flex justify-between align-items-start">
+                <div>
+                    <div class="fw-600">@note.Title</div>
+                    <div class="patient-meta">@note.NoteDate.ToString("dd MMMM yyyy, HH:mm") &nbsp;·&nbsp; @note.AuthorName &nbsp;·&nbsp; @note.Discipline</div>
+                </div>
+                <span class="badge badge-blue">@note.NoteType</span>
+            </div>
+            @if (!string.IsNullOrEmpty(note.Assessment) || !string.IsNullOrEmpty(note.Plan))
+            {
+                <div class="d-flex gap-3" style="margin-top: 0.75rem; flex-wrap: wrap;">
+                    @if (!string.IsNullOrEmpty(note.Assessment))
+                    { <div style="flex: 1; min-width: 180px;"><div class="patient-meta">Assessment</div><p style="margin: 0; font-size: 0.875rem;">@note.Assessment</p></div> }
+                    @if (!string.IsNullOrEmpty(note.Plan))
+                    { <div style="flex: 1; min-width: 180px;"><div class="patient-meta">Plan</div><p style="margin: 0; font-size: 0.875rem;">@note.Plan</p></div> }
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(note.Content))
+            { <p style="margin-top: 0.75rem; font-size: 0.875rem; color: var(--text-secondary);">@note.Content</p> }
+            @if (note.RequiresFollowUp && note.FollowUpDate.HasValue)
+            { <div class="patient-meta" style="margin-top: 0.5rem;">📅 Follow-up due: @note.FollowUpDate.Value.ToString("dd MMM yyyy")</div> }
+        </div>
+    }
+}
+
+@code {
+    private List<ClinicalNote> notes = new();
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var patient = await Api.GetMyPortalRecordAsync();
+        if (patient != null)
+            notes = patient.ClinicalNotes.OrderByDescending(n => n.NoteDate).ToList();
+        loading = false;
+    }
+}
